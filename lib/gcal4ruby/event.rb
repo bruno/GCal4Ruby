@@ -380,9 +380,9 @@ module GCal4Ruby
       
       if test
         puts "id passed, finding event by id" if calendar.service.debug
-        es = calendar.service.send_get("http://www.google.com/calendar/feeds/#{calendar.id}/private/full")
+        es = calendar.service.send_get("http://www.google.com/calendar/feeds/#{calendar.id}/private/full?max-results=1000000")
         REXML::Document.new(es.read_body).root.elements.each("entry"){}.map do |entry|
-          puts "element  = "+entry.name if calendar.service.debug
+          puts "element = "+entry.name if calendar.service.debug
           id = ''
           entry.elements.each("id") {|v| id = v.text}
           puts "id = #{id}" if calendar.service.debug
@@ -396,6 +396,7 @@ module GCal4Ruby
             return event
           end
         end
+        return nil
       end
 
   

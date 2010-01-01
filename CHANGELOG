@@ -1,4 +1,6 @@
 #=CHANGELOG
+#==version 0.2.7
+#* Added fix for finding events in calendars that have more than 25 entries
 #==version 0.2.6
 #* Added fix for updated google calendar XML per http://cookingandcoding.wordpress.com/2009/06/08/new-ruby-google-calendar-api-gem-gcal4ruby/#comment-183
 #==version 0.2.5
