@@ -1,4 +1,6 @@
 #=CHANGELOG
+#==version 0.2.8
+#* Merged changes from edruder and h13ronim from the unofficial github repo - http://github.com/h13ronim/gcal4ruby/commits/master
 #==version 0.2.7
 #* Added fix for finding events in calendars that have more than 25 entries
 #==version 0.2.6
