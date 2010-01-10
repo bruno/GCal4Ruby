@@ -180,9 +180,10 @@ module GCal4Ruby
       http = get_http_object(location)
       puts "url = "+url if @debug
       if location.scheme == 'https'
+        #fixed http/https misnaming via JohnMetta
         puts "SSL True" if @debug
-        https.use_ssl = true
-        https.verify_mode = OpenSSL::SSL::VERIFY_NONE
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
       end
       puts "Starting post\nHeader: #{header}\n" if @debug
       http.start do |http|

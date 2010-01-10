@@ -1,4 +1,6 @@
 #=CHANGELOG
+#==version 0.2.9
+#* Fixed small SSL redirect bug due to variable misnaming in base.rb.  Fix provided by JohnMetta
 #==version 0.2.8
 #* Merged changes from edruder and h13ronim from the unofficial github repo - http://github.com/h13ronim/gcal4ruby/commits/master
 #==version 0.2.7
