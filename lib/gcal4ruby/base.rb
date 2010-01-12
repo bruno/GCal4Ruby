@@ -111,30 +111,34 @@ module GCal4Ruby
       header = auth_header(header)
       ret = nil
       location = URI.parse(url)
-      https = get_http_object(location)
       puts "url = "+url if @debug
-      if location.scheme == 'https'
-        puts "SSL True" if @debug
-      	https.use_ssl = true
-      	https.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      end
-      puts "Starting post\nHeader: #{header}\nContent: #{content}" if @debug
-      https.start do |http|
-        ret = http.post(location.to_s, content, header)
-      end
+      ret = do_post(location, header, content)
       while ret.is_a?(Net::HTTPRedirection)
-        puts "Redirect recieved, resending post" if @debug
-        https.start do |http|
-          ret = http.post(ret['location'], content, header)
-        end
+        puts "Redirect received, resending post" if @debug
+        ret = do_post(ret['location'], header, content)
       end
       if ret.is_a?(Net::HTTPSuccess)
-        puts "20x response recieved\nResponse: \n"+ret.read_body if @debug
+        puts "20x response received\nResponse: \n"+ret.read_body if @debug
         return ret
       else
         puts "invalid response received: "+ret.code if @debug
         raise HTTPPostFailed, ret.body
       end
+    end
+    
+    def do_post(url, header, content)
+      ret = nil
+      if url.is_a?(String)
+        location = URI.parse(url)
+      else
+        location = url
+      end
+      http = get_http_object(location)
+      puts "Starting post\nHeader: #{header}\n" if @debug
+      http.start do |ht|
+        ret = ht.post(location.to_s, content, header)
+      end
+      return ret
     end
     
     # Sends an HTTP PUT request.  The header should be a hash of name/value pairs.  
@@ -144,30 +148,34 @@ module GCal4Ruby
       header = auth_header(header)
       ret = nil
       location = URI.parse(url)
-      https = get_http_object(location)
       puts "url = "+url if @debug
-      if location.scheme == 'https'
-        puts "SSL True" if @debug
-        https.use_ssl = true
-        https.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      end
-      puts "Starting post\nHeader: #{header}\nContent: #{content}" if @debug
-      https.start do |http|
-        ret = http.put(location.to_s, content, header)
-      end
+      ret = do_put(location, header, content)
       while ret.is_a?(Net::HTTPRedirection)
-        puts "Redirect recieved, resending post" if @debug
-        https.start do |http|
-          ret = http.put(ret['location'], content, header)
-        end
+        puts "Redirect received, resending post" if @debug
+        ret = do_put(ret['location'], header, content)
       end
       if ret.is_a?(Net::HTTPSuccess)
-        puts "20x response recieved\nResponse: \n"+ret.read_body if @debug
+        puts "20x response received\nResponse: \n"+ret.read_body if @debug
         return ret
       else
         puts "invalid response received: "+ret.code if @debug
         raise HTTPPutFailed, ret.body
       end
+    end
+    
+    def do_put(url, header, content)
+      ret = nil
+      if url.is_a?(String)
+        location = URI.parse(url)
+      else
+        location = url
+      end
+      http = get_http_object(location)
+      puts "Starting put\nHeader: #{header}\n" if @debug
+      http.start do |ht|
+        ret = ht.put(location.to_s, content, header)
+      end
+      return ret
     end
 
     # Sends an HTTP GET request.  The header should be a hash of name/value pairs.  
@@ -177,31 +185,34 @@ module GCal4Ruby
       header = auth_header(header)
       ret = nil
       location = URI.parse(url)
-      http = get_http_object(location)
       puts "url = "+url if @debug
-      if location.scheme == 'https'
-        #fixed http/https misnaming via JohnMetta
-        puts "SSL True" if @debug
-        http.use_ssl = true
-        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      end
-      puts "Starting post\nHeader: #{header}\n" if @debug
-      http.start do |http|
-        ret = http.get(location.to_s, header)
-      end
+      ret = do_get(location, header)
       while ret.is_a?(Net::HTTPRedirection)
-        puts "Redirect recieved, resending get to #{ret['location']}" if @debug
-    	  http.start do |http|
-    	    ret = http.get(ret['location'], header)
-    	  end
+        puts "Redirect received from #{location.to_s}, resending get to #{ret['location']}" if @debug
+        ret = do_get(ret['location'], header)
       end
       if ret.is_a?(Net::HTTPSuccess)
-        puts "20x response recieved\nResponse: \n"+ret.read_body if @debug
+        puts "20x response received\nResponse: \n"+ret.read_body if @debug
         return ret
       else
-        puts "Error recieved, resending get" if @debug
+        puts "Error received, resending get" if @debug
         raise HTTPGetFailed, ret.body
       end
+    end
+    
+    def do_get(url, header)
+      ret = nil
+      if url.is_a?(String)
+        location = URI.parse(url)
+      else
+        location = url
+      end
+      http = get_http_object(location)
+      puts "Starting get\nHeader: #{header}\n" if @debug
+      http.start do |ht|
+        ret = ht.get(location.to_s, header)
+      end
+      return ret
     end
 
     # Sends an HTTP DELETE request.  The header should be a hash of name/value pairs.  
@@ -211,40 +222,51 @@ module GCal4Ruby
       header = auth_header(header)
       ret = nil
       location = URI.parse(url)
-      https = get_http_object(location)
       puts "url = "+url if @debug
-      if location.scheme == 'https'
-        puts "SSL True" if @debug
-        https.use_ssl = true
-        https.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      end
-      puts "Starting post\nHeader: #{header}\n" if @debug
-      https.start do |http|
-        ret = http.delete(location.to_s, header)
-      end
+      ret = do_delete(location, header)
       while ret.is_a?(Net::HTTPRedirection)
-        puts "Redirect recieved, resending post" if @debug
-        https.start do |http|
-          ret = http.delete(ret['location'], header)
-        end
+        puts "Redirect received, resending post" if @debug
+        ret = do_delete(ret['location'], header)
       end
       if ret.is_a?(Net::HTTPSuccess)
-        puts "20x response recieved\nResponse: \n"+ret.read_body if @debug
+        puts "20x response received\nResponse: \n"+ret.read_body if @debug
         return true
       else
         puts "invalid response received: "+ret.code if @debug
         raise HTTPDeleteFailed, ret.body
       end
     end
+    
+    def do_delete(url, header)
+      ret = nil
+      if url.is_a?(String)
+        location = URI.parse(url)
+      else
+        location = url
+      end
+      http = get_http_object(location)
+      puts "Starting get\nHeader: #{header}\n" if @debug
+      http.start do |ht|
+        ret = ht.delete(location.to_s, header)
+      end
+      return ret
+    end
 
     private
 
     def get_http_object(location)
       if @proxy_info and @proxy_info.address
-	     return Net::HTTP.new(location.host, location.port, @proxy_info.address, @proxy_info.port, @proxy_info.username, @proxy_info.password)
+	     http = Net::HTTP.new(location.host, location.port, @proxy_info.address, @proxy_info.port, @proxy_info.username, @proxy_info.password)
       else
-	     return Net::HTTP.new(location.host, location.port)
-      end      
+	     http = Net::HTTP.new(location.host, location.port)
+	    end
+      if location.scheme == 'https'
+        #fixed http/http misnaming via JohnMetta
+        puts "SSL True" if @debug
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      end
+      return http
     end
 
     def auth_header(header)

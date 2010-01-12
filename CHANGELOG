@@ -1,4 +1,6 @@
 #=CHANGELOG
+#=*version 0.2.10
+#* Fixed library support for Google Hosted Apps accounts running in forced SSL mode.
 #==version 0.2.9
 #* Fixed small SSL redirect bug due to variable misnaming in base.rb.  Fix provided by JohnMetta
 #==version 0.2.8
