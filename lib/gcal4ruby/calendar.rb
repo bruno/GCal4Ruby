@@ -78,6 +78,8 @@ class Calendar
       entry.attributes["xmlns:gd"] = "http://schemas.google.com/g/2005"
       entry.attributes["xmlns:app"] = "http://www.w3.org/2007/app"
       entry.attributes["xmlns"] = "http://www.w3.org/2005/Atom"
+      entry.attributes["xmlns:georss"] = "http://www.georss.org/georss"
+      entry.attributes["xmlns:gml"] = "http://www.opengis.net/gml"
       e = Event.new(self)
       if e.load(entry.to_s)
         events << e
@@ -114,24 +116,26 @@ class Calendar
     #end
   end
 
-  #Accepts a Service object.  Returns the new Calendar if successful, otherwise raises the InvalidService
-  #error.
-  def initialize(service)
+  #Accepts a Service object and an optional attributes hash for initialization.  Returns the new Calendar 
+  #if successful, otherwise raises the InvalidService error.
+  def initialize(service, attributes = {})
     super()
     if !service.is_a?(Service)
       raise InvalidService
     end
-    @xml = CALENDAR_XML
-    @service = service
+    attributes.each do |key, value|
+      self.send("#{key}=", value)
+    end
+    @xml ||= CALENDAR_XML
+    @service ||= service
     @exists = false
-    @title = ""
-    @summary = ""
-    @public = false
-    @id = nil
-    @hidden = false
-    @timezone = "America/Los_Angeles"
-    @color = "#2952A3"
-    @where = ""
+    @title ||= ""
+    @summary ||= ""
+    @public ||= false
+    @hidden ||= false
+    @timezone ||= "America/Los_Angeles"
+    @color ||= "#2952A3"
+    @where ||= ""
     return true
   end
   

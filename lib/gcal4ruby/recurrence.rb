@@ -3,6 +3,11 @@ class Time
   def complete
     self.utc.strftime("%Y%m%dT%H%M%S")
   end
+  
+  def self.parse_complete(value)
+    d, h = value.split("T")
+    return Time.parse(d+" "+h.gsub("Z", ""))
+  end
 end
 
 module GCal4Ruby
@@ -22,15 +27,59 @@ module GCal4Ruby
     #True if the event is all day (i.e. no start/end time)
     attr_accessor :all_day
     
-    #Returns a new Recurrence object
-    def initialize
-      @start = nil
-      @end = nil
-      @event = nil
-      @day_of_week = nil
-      @repeat_until = nil
-      @frequency = nil
-      @all_day = false
+    #Accepts an optional attributes hash or a string containing a properly formatted ISO 8601 recurrence rule.  Returns a new Recurrence object
+    def initialize(vars = {})
+      if vars.is_a? Hash
+        vars.each do |key, value|
+          self.send("#{key}=", value)
+        end
+      elsif vars.is_a? String
+        self.load(vars)
+      end
+      @all_day ||= false
+    end
+    
+    #Accepts a string containing a properly formatted ISO 8601 recurrence rule and loads it into the recurrence object
+    def load(rec)
+      attrs = rec.split("\n")
+      attrs.each do |val|
+        key, value = val.split(":")
+        case key
+          when 'DTSTART'
+            @start = Time.parse_complete(value)
+          when 'DTSTART;VALUE=DATE'
+            @start = Time.parse(value)
+            @all_day = true
+          when 'DTSTART;VALUE=DATE-TIME'
+            @start = Time.parse_complete(value)
+          when 'DTEND'
+            @end = Time.parse_complete(value)
+          when 'DTEND;VALUE=DATE'
+            @end = Time.parse(value)
+          when 'DTEND;VALUE=DATE-TIME'
+            @end = Time.parse_complete(value)
+          when 'RRULE'
+            vals = value.split(";")
+            key = ''
+            by = ''
+            int = nil
+            vals.each do |rr|
+              a, h = rr.split("=")
+              case a 
+                when 'FREQ'
+                  key = h.downcase.capitalize
+                when 'INTERVAL'
+                  int = h
+                when 'UNTIL'
+                  @repeat_until = Time.parse(value)
+                else
+                  by = h.split(",")
+              end
+            end
+            @frequency = {key => by}
+            @frequency.merge({'interval' => int}) if int
+        end
+      end
     end
     
     #Returns a string with the correctly formatted ISO 8601 recurrence rule
@@ -75,7 +124,7 @@ module GCal4Ruby
             when "monthly"
               by += "BYDAY=#{value};"
             when "yearly"
-              by += "BYYEARDAY=#{value}"
+              by += "BYYEARDAY=#{value};"
             when 'interval'
               i += "INTERVAL=#{value};"
           end
@@ -83,7 +132,7 @@ module GCal4Ruby
         output += f+i+by
       end      
       if @repeat_until
-        output += ";UNTIL=#{@repeat_until.strftime("%Y%m%d")}"
+        output += "UNTIL=#{@repeat_until.strftime("%Y%m%d")}"
       end
       
       output += "\n"
@@ -136,7 +185,7 @@ module GCal4Ruby
     #- *Monthly*: A value of a positive or negative integer (i.e. +1) prepended to a day-of-week string ('TU') to indicate the position of the day within the month.  E.g. +1TU would be the first tuesday of the month.
     #- *Yearly*: A value of 1 to 366 indicating the day of the year.  May be negative to indicate counting down from the last day of the year.
     #
-    #Optionally, you may specific a second hash pair to set the internal the even repeats:
+    #Optionally, you may specific a second hash pair to set the interval the event repeats:
     #   "interval" => '2'
     #If the interval is missing, it is assumed to be 1.
     #

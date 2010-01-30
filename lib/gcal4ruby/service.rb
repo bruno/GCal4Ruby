@@ -29,9 +29,13 @@ class Service < Base
   # adequate permissions
   attr_accessor :check_public
   
-  def initialize
-    super
-    @check_public = true
+  #Accepts an optional attributes hash for initialization values
+  def initialize(attributes = {})
+    super()
+    attributes.each do |key, value|
+      self.send("#{key}=", value)
+    end    
+    @check_public ||= true
   end
 
   # The authenticate method passes the username and password to google servers.  

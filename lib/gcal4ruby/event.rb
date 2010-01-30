@@ -115,8 +115,8 @@ module GCal4Ruby
     #Sets the event's recurrence information to a Recurrence object.  Returns the recurrence if successful,
     #false otherwise
     def recurrence=(r)
-      if r.is_a?(Recurrence)
-        r.event = self
+      if r.is_a?(Recurrence) or r.nil?
+        r.event = self unless r.nil?
         @recurrence = r
       else
         return false
@@ -178,24 +178,21 @@ module GCal4Ruby
         end
     end
     
-    #Creates a new Event.  Accepts a valid Calendar object.
-    def initialize(calendar)
+    #Creates a new Event.  Accepts a valid Calendar object and optional attributes hash.
+    def initialize(calendar, attributes = {})
       if not calendar.editable
         raise CalendarNotEditable
       end
       super()
-      @xml = EVENT_XML
-      @calendar = calendar
-      @title = nil
-      @content = nil
-      @start = nil
-      @end = nil
-      @where = nil
-      @transparency = "http://schemas.google.com/g/2005#event.opaque"
-      @status = "http://schemas.google.com/g/2005#event.confirmed"
-      @attendees = []
-      @reminder = nil
-      @all_day = false
+      attributes.each do |key, value|
+        self.send("#{key}=", value)
+      end
+      @xml ||= EVENT_XML
+      @calendar ||= calendar
+      @transparency ||= "http://schemas.google.com/g/2005#event.opaque"
+      @status ||= "http://schemas.google.com/g/2005#event.confirmed"
+      @attendees ||= []
+      @all_day ||= false
     end
     
     #If the event does not exist on the Google Calendar service, save creates it.  Otherwise
@@ -268,6 +265,19 @@ module GCal4Ruby
             end
         when "where"
           ele.attributes["valueString"] = @where
+        when "recurrence"
+          puts 'recurrence element found' if @calendar.service.debug
+          if @recurrence
+            puts 'setting recurrence' if @calendar.service.debug
+            ele.text = @recurrence.to_s
+          else
+            puts 'no recurrence, adding when' if @calendar.service.debug
+            w = xml.root.add_element("gd:when")
+            xml.root.delete_element("/entry/gd:recurrence")
+            w.attributes["startTime"] = @all_day ? @start.strftime("%Y-%m-%d") : @start.xmlschema
+            w.attributes["endTime"] = @all_day ? @end.strftime("%Y-%m-%d") : @end.xmlschema
+            set_reminder(w)
+          end
         end
       end        
       if not @attendees.empty?
@@ -329,9 +339,11 @@ module GCal4Ruby
                  @status =  :confirmed
                 when "http://schemas.google.com/g/2005#event.tentative"
                   @status = :tentative
-                when "http://schemas.google.com/g/2005#event.confirmed"
+                when "http://schemas.google.com/g/2005#event.cancelled"
                   @status = :cancelled
               end
+            when 'recurrence'
+              @recurrence = Recurrence.new(ele.text)
             when "transparency"
                case ele.attributes["value"]
                   when "http://schemas.google.com/g/2005#event.transparent" 
@@ -380,21 +392,18 @@ module GCal4Ruby
       
       if test
         puts "id passed, finding event by id" if calendar.service.debug
-        es = calendar.service.send_get("http://www.google.com/calendar/feeds/#{calendar.id}/private/full?max-results=1000000")
-        REXML::Document.new(es.read_body).root.elements.each("entry"){}.map do |entry|
-          puts "element = "+entry.name if calendar.service.debug
-          id = ''
-          entry.elements.each("id") {|v| id = v.text}
-          puts "id = #{id}" if calendar.service.debug
-          if id == query
-            entry.attributes["xmlns:gCal"] = "http://schemas.google.com/gCal/2005"
-            entry.attributes["xmlns:gd"] = "http://schemas.google.com/g/2005"
-            entry.attributes["xmlns:app"] = "http://www.w3.org/2007/app" #Per http://twitter.com/mgornick
-            entry.attributes["xmlns"] = "http://www.w3.org/2005/Atom"
-            event = Event.new(calendar)
-            event.load("<?xml version='1.0' encoding='UTF-8'?>#{entry.to_s}")
-            return event
-          end
+        #ugly, but Google doesn't return the self url as ID as described in the API reference http://code.google.com/apis/calendar/data/2.0/developers_guide_protocol.html#RetrievingEvents
+        event_id = query.gsub("http://www.google.com/calendar/feeds/#{CGI::escape(calendar.service.account)}/events/", 
+                              "http://www.google.com/calendar/feeds/#{CGI::escape(calendar.service.account)}/private/full/")
+        es = calendar.service.send_get(event_id)
+        puts es.inspect if calendar.service.debug
+        if es
+          entry = REXML::Document.new(es.read_body).root
+          puts 'event found' if calendar.service.debug
+          Event.define_xml_namespaces(entry)
+          event = Event.new(calendar)
+          event.load("<?xml version='1.0' encoding='UTF-8'?>#{entry.to_s}")
+          return event
         end
         return nil
       end
@@ -423,15 +432,12 @@ module GCal4Ruby
       query_string += "&max-results=#{max_results}" if max_results
       query_string += "&sortorder=#{sort_order}" if sort_order
       query_string += "&ctz=#{timezone.gsub(" ", "_")}" if timezone
-      query_string += "&singleevents#{single_events}" if single_events
+      query_string += "&singleevents=#{single_events}" if single_events
       if query_string
         events = calendar.service.send_get("http://www.google.com/calendar/feeds/#{calendar.id}/private/full?"+query_string)
         ret = []
         REXML::Document.new(events.read_body).root.elements.each("entry"){}.map do |entry|
-          entry.attributes["xmlns:gCal"] = "http://schemas.google.com/gCal/2005"
-          entry.attributes["xmlns:gd"] = "http://schemas.google.com/g/2005"
-          entry.attributes["xmlns:app"] = "http://www.w3.org/2007/app"
-          entry.attributes["xmlns"] = "http://www.w3.org/2005/Atom"
+          Event.define_xml_namespaces(entry)
           event = Event.new(calendar)
           event.load("<?xml version='1.0' encoding='UTF-8'?>#{entry.to_s}")
           ret << event
@@ -457,6 +463,15 @@ module GCal4Ruby
     @recurrence = nil
     @deleted = false
     @edit_feed = ''
+    
+    def self.define_xml_namespaces(entry)
+      entry.attributes["xmlns:gCal"] = "http://schemas.google.com/gCal/2005"
+      entry.attributes["xmlns:gd"] = "http://schemas.google.com/g/2005"
+      entry.attributes["xmlns:app"] = "http://www.w3.org/2007/app"
+      entry.attributes["xmlns"] = "http://www.w3.org/2005/Atom"
+      entry.attributes["xmlns:georss"] = "http://www.georss.org/georss"
+      entry.attributes["xmlns:gml"] = "http://www.opengis.net/gml"
+    end
     
     def set_reminder(ele)
       ele.delete_element("gd:reminder")

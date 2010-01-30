@@ -23,6 +23,7 @@ def tester
   service_test
   calendar_test
   event_test
+  event_recurrence_test
 end
 
 def service_test
@@ -120,6 +121,44 @@ def event_test
   end
   
   puts "5. Delete Event"
+  if event.delete
+    successful 
+  else
+    failed
+  end
+end
+
+def event_recurrence_test
+  puts "---Starting Event Recurrence Test---"
+  
+  @first_start = Time.now
+  @first_end = Time.now+3600
+  @first_freq = {'weekly' => ['TU']}
+  @second_start = Time.now+86000
+  @second_end = Time.now+89600
+  @second_freq = {'weekly' => ['SA']}
+  
+  puts "1. Create Recurring Event"
+  event = Event.new(@service.calendars[0])
+  event.title = "Test Recurring Event"
+  event.content = "Test event content"
+  event.recurrence = Recurrence.new({:start => @first_start, :end => @first_end, :frequency => @first_freq})
+  if event.save 
+    successful event.to_xml
+  else
+    failed("recurrence = "+event.recurrence.to_s)
+  end
+  
+  puts "2. Edit Recurrence"
+  event.title = "Edited recurring title"
+  event.recurrence = Recurrence.new({:start => @second_start, :end => @second_end, :frequency => @second_freq})
+  if event.save 
+    successful event.to_xml
+  else
+    failed
+  end
+  
+  puts "3. Delete Event"
   if event.delete
     successful 
   else
