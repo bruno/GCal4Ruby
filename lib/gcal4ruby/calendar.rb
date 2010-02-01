@@ -185,7 +185,7 @@ class Calendar
   #scope parameter may be either :all to return an array of matches, or :first to return 
   #the first match as a Calendar object.
   def self.find(service, query_term=nil, params = {})
-    t = query_term.downcase
+    t = query_term.downcase if query_term
     cals = service.calendars
     ret = []
     cals.each do |cal|

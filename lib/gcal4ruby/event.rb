@@ -6,11 +6,7 @@ module GCal4Ruby
   #=Usage
   #All usages assume a successfully authenticated Service and valid Calendar.
   #1. Create a new Event
-  #    event = Event.new(calendar)
-  #    event.title = "Soccer Game"
-  #    event.start = Time.parse("12-06-2009 at 12:30 PM")
-  #    event.end = Time.parse("12-06-2009 at 1:30 PM")
-  #    event.where = "Merry Playfields"
+  #    event = Event.new(calendar, {:title => "Soccer Game", :start => Time.parse("12-06-2009 at 12:30 PM"), :end => Time.parse("12-06-2009 at 1:30 PM"), :where => "Merry Playfields"})
   #    event.save
   #
   #2. Find an existing Event
@@ -392,9 +388,9 @@ module GCal4Ruby
       
       if test
         puts "id passed, finding event by id" if calendar.service.debug
-        #ugly, but Google doesn't return the self url as ID as described in the API reference http://code.google.com/apis/calendar/data/2.0/developers_guide_protocol.html#RetrievingEvents
-        event_id = query.gsub("http://www.google.com/calendar/feeds/#{CGI::escape(calendar.service.account)}/events/", 
-                              "http://www.google.com/calendar/feeds/#{CGI::escape(calendar.service.account)}/private/full/")
+        puts "id = "+query if calendar.service.debug
+        event_id = query.gsub("/events/","/private/full/") #fix provided by groesser3
+      
         es = calendar.service.send_get(event_id)
         puts es.inspect if calendar.service.debug
         if es

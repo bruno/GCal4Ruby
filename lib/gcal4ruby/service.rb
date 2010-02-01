@@ -58,7 +58,7 @@ class Service < Base
     if not @auth_token
        raise NotAuthenticated
     end
-    ret = send_get(CALENDAR_LIST_FEED)
+    ret = send_get(CALENDAR_LIST_FEED+"?max-results=10000")
     cals = []
     REXML::Document.new(ret.body).root.elements.each("entry"){}.map do |entry|
       entry.attributes["xmlns:gCal"] = "http://schemas.google.com/gCal/2005"
