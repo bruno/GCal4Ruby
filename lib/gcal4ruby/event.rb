@@ -176,9 +176,6 @@ module GCal4Ruby
     
     #Creates a new Event.  Accepts a valid Calendar object and optional attributes hash.
     def initialize(calendar, attributes = {})
-      if not calendar.editable
-        raise CalendarNotEditable
-      end
       super()
       attributes.each do |key, value|
         self.send("#{key}=", value)
@@ -194,6 +191,9 @@ module GCal4Ruby
     #If the event does not exist on the Google Calendar service, save creates it.  Otherwise
     #updates the existing event data.  Returns true on success, false otherwise.
     def save
+      if not calendar.editable
+        raise CalendarNotEditable
+      end
       if @deleted
         return false
       end
@@ -368,7 +368,7 @@ module GCal4Ruby
     
     #Finds the event that matches a query term in the event title or description.
     #  
-    #'query' is a string to perform the search on or an event id.
+    #'query' is a string to perform the search on or an event id, or :all to include all results.
     # 
     #The params hash can contain the following hash values
     #* *scope*: may be :all or :first, indicating whether to return the first record found or an array of all records that match the query.  Default is :all.
@@ -377,7 +377,7 @@ module GCal4Ruby
     #* *sort_order*: either 'ascending' or 'descending'.
     #* *single_events*: either 'true' to return all recurring events as a single entry, or 'false' to return all recurring events as a unique event for each recurrence.
     #* *ctz*: the timezone to return the event times in
-    def self.find(calendar, query = '', params = {})
+    def self.find(calendar, query = :all, params = {})
       query_string = ''
       
       begin 
@@ -403,6 +403,10 @@ module GCal4Ruby
         end
         return nil
       end
+      
+      if not query.is_a?String and query != :all
+        raise "The query parameter must be a string or :all"
+      end
 
   
       #parse params hash for values
@@ -413,7 +417,7 @@ module GCal4Ruby
       timezone = params[:ctz] || nil
       
       #set up query string
-      query_string += "q=#{CGI.escape(query)}" if query
+      query_string += "q=#{CGI.escape(query)}" if query.is_a?String
       if range
         if not range.is_a? Hash or (range.size > 0 and (not range[:start].is_a? Time or not range[:end].is_a? Time))
           raise "The date range must be a hash including the :start and :end date values as Times"
@@ -475,13 +479,13 @@ module GCal4Ruby
         e = ele.add_element("gd:reminder")
         used = false
         if @reminder[:minutes] 
-          e.attributes['minutes'] = @reminder[:minutes] 
+          e.attributes['minutes'] = @reminder[:minutes].to_s 
           used = true
         elsif @reminder[:hours] and not used
-          e.attributes['hours'] = @reminder[:hours]
+          e.attributes['hours'] = @reminder[:hours].to_s
           used = true
         elsif @reminder[:days] and not used
-          e.attributes['days'] = @reminder[:days]
+          e.attributes['days'] = @reminder[:days].to_s
         end
         if @reminder[:method] 
           e.attributes['method'] = @reminder[:method]
