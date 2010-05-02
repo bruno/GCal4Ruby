@@ -1,451 +1,356 @@
-require 'gcal4ruby/event'
-
+# Author:: Mike Reich (mike@seabourneconsulting.com)
+# Copyright:: Copyright (C) 2010 Mike Reich
+# License:: GPL v2
+#--
+# Licensed under the General Public License (GPL), Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+# Feel free to use and update, but be sure to contribute your
+# code back to the project and attribute as required by the license.
+#++
+require 'gdata4ruby/acl/access_rule'
 module GCal4Ruby
-#The Calendar Class is the representation of a Google Calendar.  Each user account 
-#can have multiple calendars.  You must have an authenticated Service object before 
-#using the Calendar object.
-#=Usage
-#All usages assume a successfully authenticated Service.
-#1. Create a new Calendar
-#    cal = Calendar.new(service)
-#
-#2. Find an existing Calendar
-#    cal = Calendar.find(service, "New Calendar", :first)
-#
-#3. Find all calendars containing the search term
-#    cal = Calendar.find(service, "Soccer Team")
-#
-#4. Find a calendar by ID
-#    cal = Calendar.find(service, id, :first)
-#
-#After a calendar object has been created or loaded, you can change any of the 
-#attributes like you would any other object.  Be sure to save the calendar to write changes
-#to the Google Calendar service.
-
-class Calendar
-  CALENDAR_FEED = "http://www.google.com/calendar/feeds/default/owncalendars/full"
-  
-  #The calendar title
-  attr_accessor :title
-  
-  #A short description of the calendar
-  attr_accessor :summary
-  
-  #The parent Service object passed on initialization
-  attr_reader :service
-  
-  #The unique calendar id
-  attr_reader :id
-  
-  #Boolean value indicating the calendar visibility
-  attr_accessor :hidden
-  
-  #The calendar timezone[http://code.google.com/apis/calendar/docs/2.0/reference.html#gCaltimezone]
-  attr_accessor :timezone
-  
-  #The calendar color.  Must be one of these[http://code.google.com/apis/calendar/docs/2.0/reference.html#gCalcolor] values.
-  attr_accessor :color
-  
-  #The calendar geo location, if any
-  attr_accessor :where
-  
-  #A boolean value indicating whether the calendar appears by default when viewed online
-  attr_accessor :selected
-  
-  #The event feed for the calendar
-  attr_reader :event_feed
-  
-  #A flag indicating whether the calendar is editable by this account 
-  attr_reader :editable
-  
-  #Returns true if the calendar exists on the Google Calendar system (i.e. was 
-  #loaded or has been saved).  Otherwise returns false.
-  def exists?
-    return @exists
-  end
-  
-  #Returns true if the calendar is publically accessable, otherwise returns false.
-  def public?
-    return @public
-  end
-  
-  #Returns an array of Event objects corresponding to each event in the calendar.
-  def events
-    events = []
-    ret = @service.send_get(@event_feed)
-    REXML::Document.new(ret.body).root.elements.each("entry"){}.map do |entry|
-      entry.attributes["xmlns:gCal"] = "http://schemas.google.com/gCal/2005"
-      entry.attributes["xmlns:gd"] = "http://schemas.google.com/g/2005"
-      entry.attributes["xmlns:app"] = "http://www.w3.org/2007/app"
-      entry.attributes["xmlns"] = "http://www.w3.org/2005/Atom"
-      entry.attributes["xmlns:georss"] = "http://www.georss.org/georss"
-      entry.attributes["xmlns:gml"] = "http://www.opengis.net/gml"
-      e = Event.new(self)
-      if e.load(entry.to_s)
-        events << e
+  #The Calendar Class is the representation of a Google Calendar.  Each user account 
+  #can have multiple calendars.  You must have an authenticated Service object before 
+  #using the Calendar object.
+  #=Usage
+  #All usages assume a successfully authenticated Service.
+  #1. Create a new Calendar
+  #    cal = Calendar.new(service)
+  #
+  #2. Find a calendar by ID
+  #    cal = Calendar.find(service, {:id => cal_id})
+  #
+  #3. Get all calendar events
+  #    cal = Calendar.find(service, {:id => cal_id})
+  #    events = cal.events
+  #
+  #4. Find an existing calendar by title
+  #    cal = Calendar.find(service, {:title => "New Calendar"})
+  #
+  #5. Find all calendars containing a search term
+  #    cal = Calendar.find(service, "Soccer Team")
+  #
+  #After a calendar object has been created or loaded, you can change any of the 
+  #attributes like you would any other object.  Be sure to save the calendar to write changes
+  #to the Google Calendar service.
+  class Calendar < GData4Ruby::GDataObject
+    CALENDAR_FEED = "http://www.google.com/calendar/feeds/default/owncalendars/full/"
+    CALENDAR_QUERY_FEED = "http://www.google.com/calendar/feeds/default/calendars/"
+    CALENDAR_XML = "<entry xmlns='http://www.w3.org/2005/Atom' 
+         xmlns:gd='http://schemas.google.com/g/2005' 
+         xmlns:gCal='http://schemas.google.com/gCal/2005'>
+    <title type='text'></title>
+    <summary type='text'></summary>
+    <gCal:timezone value='America/Los_Angeles'></gCal:timezone>
+    <gCal:hidden value='false'></gCal:hidden>
+    <gCal:color value='#2952A3'></gCal:color>
+    <gd:where rel='' label='' valueString='Oakland'></gd:where>
+  </entry>"
+    
+    #A short description of the calendar
+    attr_accessor :summary
+    
+    #Boolean value indicating the calendar visibility
+    attr_accessor :hidden
+    
+    #The calendar timezone[http://code.google.com/apis/calendar/docs/2.0/reference.html#gCaltimezone]
+    attr_accessor :timezone
+    
+    #The calendar color.  Must be one of these[http://code.google.com/apis/calendar/docs/2.0/reference.html#gCalcolor] values.
+    attr_accessor :color
+    
+    #The calendar geo location, if any
+    attr_accessor :where
+    
+    #A boolean value indicating whether the calendar appears by default when viewed online
+    attr_accessor :selected
+    
+    #A flag indicating whether the calendar is editable by this account 
+    attr_reader :editable
+    
+    #Accepts a Service object and an optional attributes hash for initialization.  Returns the new Calendar 
+    #if successful, otherwise raises the InvalidService error.
+    def initialize(service, attributes = {})
+      super(service, attributes)
+      if !service.is_a?(Service)
+        raise InvalidService
       end
-    end
-    return events
-  end
-  
-  #Set the calendar to public (p = true) or private (p = false).  Publically viewable
-  #calendars can be accessed by anyone without having to log in to google calendar.  See
-  #Calendar#to_iframe for options to display a public calendar in a webpage.
-  def public=(p)
-    if p
-      permissions = 'http://schemas.google.com/gCal/2005#read' 
-    else
-      permissions = 'none'
+      @xml = CALENDAR_XML
+      @service ||= service
+      @exists = false
+      @title ||= ""
+      @summary ||= ""
+      @public ||= false
+      @hidden ||= false
+      @timezone ||= "America/Los_Angeles"
+      @color ||= "#2952A3"
+      @where ||= ""
+      @permissions = ''
+      attributes.each do |key, value|
+        self.send("#{key}=", value)
+      end
+      return true
     end
     
-    #if p != @public
-      path = "http://www.google.com/calendar/feeds/#{@id}/acl/full/default"
-      request = REXML::Document.new(ACL_XML)
-      request.root.elements.each() do |ele|
-        if ele.name == 'role'
-          ele.attributes['value'] = permissions
+    #Returns true if the calendar exists on the Google Calendar system (i.e. was 
+    #loaded or has been saved).  Otherwise returns false.
+    def exists?
+      return @exists
+    end
+    
+    #Returns true if the calendar is publically accessable, otherwise returns false.
+    def public?
+      return @public
+    end
+    
+    #Returns an array of Event objects corresponding to each event in the calendar.
+    def events
+      events = []
+      ret = @service.send_request(GData4Ruby::Request.new(:get, @content_uri))
+      REXML::Document.new(ret.body).root.elements.each("entry"){}.map do |entry|
+        entry = GData4Ruby::Utils.add_namespaces(entry)
+        e = Event.new(service)
+        if e.load(entry.to_s)
+          events << e
         end
-        
       end
-      if @service.send_put(path, request.to_s, {"Content-Type" => "application/atom+xml", "Content-Length" => request.length.to_s})
-        @public = p
-        return true
+      return events
+    end
+    
+    #Set the calendar to public (p = true) or private (p = false).  Publically viewable
+    #calendars can be accessed by anyone without having to log in to google calendar.  See
+    #Calendar#to_iframe on how to display a public calendar in a webpage.
+    def public=(p)
+      if p
+        @permissions = 'http://schemas.google.com/gCal/2005#read' 
+      else
+        @permissions = 'none'
+      end
+    end
+    
+    #Creates a new instance of the object
+    def create
+      return service.send_request(GData4Ruby::Request.new(:post, CALENDAR_FEED, to_xml()))
+    end
+    
+    #Finds a Calendar based on a text query or by an id.  Parameters are:
+    #*service*::  A valid Service object to search.
+    #*query*:: either a string containing a text query to search by, or a hash containing an +id+ key with an associated id to find, or a +query+ key containint a text query to search for, or a +title+ key containing a title to search.
+    #*args*:: a hash containing optional additional query paramters to use.  See http://code.google.com/apis/gdata/docs/2.0/reference.html#Queries for a full list of possible values.  Example: 
+    # {'max-results' => '100'}
+    #If an ID is specified, a single instance of the calendar is returned if found, otherwise false.
+    #If a query term or title text is specified, and array of matching results is returned, or an empty array if nothing
+    #was found.
+    def self.find(service, query, args = {})
+      raise ArgumentError, 'query must be a hash or string' if not query.is_a? Hash and not query.is_a? String
+      if query.is_a? Hash and query[:id]
+        id = query[:id]
+        puts "id passed, finding calendar by id" if service.debug
+        puts "id = "+id if service.debug
+        d = service.send_request(GData4Ruby::Request.new(:get, CALENDAR_FEED+id, {"If-Not-Match" => "*"}))
+        puts d.inspect if service.debug
+        if d
+          return get_instance(service, d)
+        end
+      else
+        #fugly, but Google doesn't provide a way to query the calendar feed directly
+        old_public = service.check_public
+        service.check_public = false
+        results = []
+        cals = service.calendars
+        cals.each do |cal|
+          if query.is_a?(Hash)
+            results << cal if query[:query] and cal.title.downcase.include? query[:query].downcase
+            results << cal if query[:title] and cal.title == query[:query]
+          else
+            results << cal if cal.title.downcase.include? query.downcase
+          end
+        end
+        service.check_public = old_public
+        return results
+      end
+      return false
+    end
+    
+    #Reloads the calendar objects information from the stored server version.  Returns true
+    #if successful, otherwise returns false.  Any information not saved will be overwritten.
+    def reload
+      return false if not @exists
+      t = self.find(service, @id)
+      if t
+        load(t.to_xml)
       else
         return false
       end
-    #end
-  end
-
-  #Accepts a Service object and an optional attributes hash for initialization.  Returns the new Calendar 
-  #if successful, otherwise raises the InvalidService error.
-  def initialize(service, attributes = {})
-    super()
-    if !service.is_a?(Service)
-      raise InvalidService
     end
-    attributes.each do |key, value|
-      self.send("#{key}=", value)
-    end
-    @xml ||= CALENDAR_XML
-    @service ||= service
-    @exists = false
-    @title ||= ""
-    @summary ||= ""
-    @public ||= false
-    @hidden ||= false
-    @timezone ||= "America/Los_Angeles"
-    @color ||= "#2952A3"
-    @where ||= ""
-    return true
-  end
-  
-  #Deletes a calendar.  If successful, returns true, otherwise false.  If successful, the
-  #calendar object is cleared.
-  def delete
-    if @exists    
-      if @service.send_delete(CALENDAR_FEED+"/"+@id)
-        @exists = false
-        @title = nil
-        @summary = nil
-        @public = false
-        @id = nil
-        @hidden = false
-        @timezone = nil
-        @color = nil
-        @where = nil
-        return true
-      else
-        return false
-      end
-    else
-      return false
-    end
-  end
-  
-  #If the calendar does not exist, creates it, otherwise updates the calendar info.  Returns
-  #true if the save is successful, otherwise false.
-  def save
-    if @exists
-      ret = service.send_put(@edit_feed, to_xml(), {'Content-Type' => 'application/atom+xml'})
-    else
-      ret = service.send_post(CALENDAR_FEED, to_xml(), {'Content-Type' => 'application/atom+xml'})
-    end
-    if !@exists
-      if load(ret.read_body)
-        return true
-      else
-        raise CalendarSaveFailed
-      end
-    end
-    return true
-  end
-  
-  #Class method for querying the google service for specific calendars.  The service parameter
-  #should be an appropriately authenticated Service. The term parameter can be any string.  The
-  #scope parameter may be either :all to return an array of matches, or :first to return 
-  #the first match as a Calendar object.
-  def self.find(service, query_term=nil, params = {})
-    t = query_term.downcase if query_term
-    cals = service.calendars
-    ret = []
-    cals.each do |cal|
-      title = cal.title || ""
-      summary = cal.summary || ""
-      id = cal.id || ""
-      if id == query_term
-        return cal
-      end
-      if title.downcase.match(t) or summary.downcase.match(t)
-        if params[:scope] == :first
-          return cal
-        else
-          ret << cal
-        end
-      end
-    end
-    ret
-  end
-  
-  def self.get(service, id)
-    url = 'http://www.google.com/calendar/feeds/default/allcalendars/full/'+id
-    ret = service.send_get(url)
-    puts "==return=="
-    puts ret.body
-  end
-  
-  def self.query(service, query_term)
-    url = 'http://www.google.com/calendar/feeds/default/allcalendars/full'+"?q="+CGI.escape(query_term)
-    ret = service.send_get(url)
-    puts "==return=="
-    puts ret.body
-  end
-  
-  #Reloads the calendar objects information from the stored server version.  Returns true
-  #if successful, otherwise returns false.  Any information not saved will be overwritten.
-  def reload
-    if not @exists
-      return false
-    end  
-    t = Calendar.find(service, @id, :first)
-    if t
-      load(t.to_xml)
-    else
-      return false
-    end
-  end
-  
-  #Returns the xml representation of the Calenar.
-  def to_xml
-    xml = REXML::Document.new(@xml)
-    xml.root.elements.each(){}.map do |ele|
-      case ele.name
-      when "title"
-        ele.text = @title
-      when "summary"
-        ele.text = @summary
-      when "timezone"
-        ele.attributes["value"] = @timezone
-      when "hidden"
-        ele.attributes["value"] = @hidden.to_s
-      when "color"
-        ele.attributes["value"] = @color
-      when "selected"
-        ele.attributes["value"] = @selected.to_s
-      end
-    end
-    xml.to_s
-  end
-
-  #Loads the Calendar with returned data from Google Calendar feed.  Returns true if successful.
-  def load(string)
-    @exists = true
-    @xml = string
-    xml = REXML::Document.new(string)
-    xml.root.elements.each(){}.map do |ele|
-      case ele.name
-        when "id"
-          @id = ele.text.gsub("http://www.google.com/calendar/feeds/default/calendars/", "")
-        when 'title'
-          @title = ele.text
-        when 'summary'
-          @summary = ele.text
+    
+    #Returns the xml representation of the Calenar.
+    def to_xml
+      xml = REXML::Document.new(super)
+      xml.root.elements.each(){}.map do |ele|
+        case ele.name
+        when "summary"
+          ele.text = @summary
+        when "timezone"
+          ele.attributes["value"] = @timezone
+        when "hidden"
+          ele.attributes["value"] = @hidden.to_s
         when "color"
-          @color = ele.attributes['value']
-        when 'hidden'
-          @hidden = ele.attributes["value"] == "true" ? true : false
-        when 'timezone'
-          @timezone = ele.attributes["value"]
+          ele.attributes["value"] = @color
         when "selected"
-          @selected = ele.attributes["value"] == "true" ? true : false
-        when "link"
-          if ele.attributes['rel'] == 'edit'
-            @edit_feed = ele.attributes['href']
-          end
-      end
-    end
-    
-    @event_feed = "http://www.google.com/calendar/feeds/#{@id}/private/full"
-    
-    if @service.check_public
-      puts "Getting ACL Feed" if @service.debug
-      
-      #rescue error on shared calenar ACL list access
-      begin 
-        ret = @service.send_get("http://www.google.com/calendar/feeds/#{@id}/acl/full/")
-      rescue Exception => e
-        @public = false
-        @editable = false
-        return true
-      end
-      @editable = true
-      r = REXML::Document.new(ret.read_body)
-      r.root.elements.each("entry") do |ele|
-        ele.elements.each do |e|
-          #puts "e = "+e.to_s if @service.debug
-          #puts "previous element = "+e.previous_element.to_s if @service.debug
-          #added per eruder http://github.com/h13ronim/gcal4ruby/commit/3074ebde33bd3970500f6de992a66c0a4578062a
-          if e.name == 'role' and e.previous_element and e.previous_element.name == 'scope' and e.previous_element.attributes['type'] == 'default'
-            if e.attributes['value'].match('#read')
-              @public = true
-            else
-              @public = false
-            end
-          end
+          ele.attributes["value"] = @selected.to_s
+        when 'role'
+          ele.attributes['value'] = @permissions
         end
       end
-    else
-      @public = false
-      @editable = true
+      xml.to_s
     end
-    return true
-  end
   
-  #Helper function to return the currently loaded calendar formatted iframe embedded google calendar.  
-  #1. *params*: a hash of parameters that affect the display of the embedded calendar:
-  #   height:: the height of the embedded calendar in pixels
-  #   width:: the width of the embedded calendar in pixels
-  #   title:: the title to display
-  #   bgcolor:: the background color.  Limited choices, see google docs for allowable values.
-  #   color:: the color of the calendar elements.  Limited choices, see google docs for allowable values.
-  #   showTitle:: set to 'false' to hide the title
-  #   showDate:: set to 'false' to hide the current date
-  #   showNav:: set to 'false to hide the navigation tools
-  #   showPrint:: set to 'false' to hide the print icon
-  #   showTabs:: set to 'false' to hide the tabs
-  #   showCalendars:: set to 'false' to hide the calendars selection drop down
-  #   showTimezone:: set to 'false' to hide the timezone selection
-  #   border:: the border width in pixels
-  #   dates:: a range of dates to display in the format of 'yyyymmdd/yyyymmdd'.  Example: 20090820/20091001
-  #   privateKey:: use to display a private calendar.  You can find this key under the calendar settings pane of the Google Calendar website.
-  def to_iframe(params = {})
-    if not self.id
-      raise "The calendar must exist and be saved before you can use this method."
-    end
-    params[:id] = self.id
-    params[:height] ||= "600"
-    params[:width] ||= "600"
-    params[:bgcolor] ||= "#FFFFFF"
-    params[:color] ||= "#2952A3"
-    params[:showTitle] = params[:showTitle] == false ? "showTitle=0" : ''
-    params[:showNav] = params[:showNav] == false ? "showNav=0" : ''
-    params[:showDate] = params[:showDate] == false ? "showDate=0" : ''
-    params[:showPrint] = params[:showPrint] == false ? "showPrint=0" : ''
-    params[:showTabs] = params[:showTabs] == false ? "showTabs=0" : ''
-    params[:showCalendars] = params[:showCalendars] == false ? "showCalendars=0" : ''
-    params[:showTimezone] = params[:showTimezone] == false ? 'showTz=0' : ''
-    params[:border] ||= "0"
-    output = ''
-    params.each do |key, value|
-      case key
-        when :height then output += "height=#{value}"
-        when :width then output += "width=#{value}"
-        when :title then output += "title=#{CGI.escape(value)}"
-        when :bgcolor then output += "bgcolor=#{CGI.escape(value)}"
-        when :showTitle then output += value
-        when :showDate then output += value
-        when :showNav then output += value
-        when :showPrint then output += value
-        when :showTabs then output += value
-        when :showCalendars then output += value
-        when :showTimezone then output += value
-        when :viewMode then output += "mode=#{value}"
-        when :dates then output += "dates=#{CGI.escape(value)}"
-        when :privateKey then output += "pvttk=#{value}"
+    #Loads the Calendar with returned data from Google Calendar feed.  Returns true if successful.
+    def load(string)
+      super(string)
+      @exists = true
+      @xml = string
+      xml = REXML::Document.new(string)
+      xml.root.elements.each(){}.map do |ele|
+        case ele.name
+          when "id"
+            @id = ele.text.gsub("http://www.google.com/calendar/feeds/default/calendars/", "")
+          when 'summary'
+            @summary = ele.text
+          when "color"
+            @color = ele.attributes['value']
+          when 'hidden'
+            @hidden = ele.attributes["value"] == "true" ? true : false
+          when 'timezone'
+            @timezone = ele.attributes["value"]
+          when "selected"
+            @selected = ele.attributes["value"] == "true" ? true : false
+          when "link"
+            if ele.attributes['rel'] == 'edit'
+              @edit_feed = ele.attributes['href']
+            end
+          when 'accesslevel'
+            @editable = (ele.attributes["value"] == 'editor' or ele.attributes["value"] == 'owner' or ele.attributes["value"] == 'root')
+        end
       end
-      output += "&amp;"
-    end
-  
-    output += "src=#{params[:id]}&amp;color=#{CGI.escape(params[:color])}"
+      
+      if @service.check_public
+        puts "Getting ACL Feed" if @service.debug
         
-    "<iframe src='http://www.google.com/calendar/embed?#{output}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
-  end
-  
-  #Helper function to return a specified calendar id as a formatted iframe embedded google calendar.  This function does not require loading the calendar information from the Google calendar
-  #service, but does require you know the google calendar id. 
-  #1. *id*: the unique google assigned id for the calendar to display.
-  #2. *params*: a hash of parameters that affect the display of the embedded calendar:
-  #   height:: the height of the embedded calendar in pixels
-  #   width:: the width of the embedded calendar in pixels
-  #   title:: the title to display
-  #   bgcolor:: the background color.  Limited choices, see google docs for allowable values.
-  #   color:: the color of the calendar elements.  Limited choices, see google docs for allowable values.
-  #   showTitle:: set to 'false' to hide the title
-  #   showDate:: set to 'false' to hide the current date
-  #   showNav:: set to 'false to hide the navigation tools
-  #   showPrint:: set to 'false' to hide the print icon
-  #   showTabs:: set to 'false' to hide the tabs
-  #   showCalendars:: set to 'false' to hide the calendars selection drop down
-  #   showTimezone:: set to 'false' to hide the timezone selection
-  #   border:: the border width in pixels
-  #   dates:: a range of dates to display in the format of 'yyyymmdd/yyyymmdd'.  Example: 20090820/20091001
-  #   privateKey:: use to display a private calendar.  You can find this key under the calendar settings pane of the Google Calendar website.
-  def self.to_iframe(id, params = {})
-    params[:id] = id
-    params[:height] ||= "600"
-    params[:width] ||= "600"
-    params[:bgcolor] ||= "#FFFFFF"
-    params[:color] ||= "#2952A3"
-    params[:showTitle] = params[:showTitle] == false ? "showTitle=0" : ''
-    params[:showNav] = params[:showNav] == false ? "showNav=0" : ''
-    params[:showDate] = params[:showDate] == false ? "showDate=0" : ''
-    params[:showPrint] = params[:showPrint] == false ? "showPrint=0" : ''
-    params[:showTabs] = params[:showTabs] == false ? "showTabs=0" : ''
-    params[:showCalendars] = params[:showCalendars] == false ? "showCalendars=0" : ''
-    params[:showTimezone] = params[:showTimezone] == false ? 'showTz=0' : ''
-    params[:border] ||= "0"
-    output = ''
-    params.each do |key, value|
-      case key
-        when :height then output += "height=#{value}"
-        when :width then output += "width=#{value}"
-        when :title then output += "title=#{CGI.escape(value)}"
-        when :bgcolor then output += "bgcolor=#{CGI.escape(value)}"
-        when :showTitle then output += value
-        when :showDate then output += value
-        when :showNav then output += value
-        when :showPrint then output += value
-        when :showTabs then output += value
-        when :showCalendars then output += value
-        when :showTimezone then output += value
-        when :viewMode then output += "mode=#{value}"
-        when :dates then output += "dates=#{CGI.escape(value)}"
-        when :privateKey then output += "pvttk=#{value}"
+        #rescue error on shared calenar ACL list access
+        begin 
+          ret = @service.send_request(GData4Ruby::Request.new(:get, @acl_uri))
+        rescue Exception => e
+          puts "ACL Feed Get Failed: #{e.inspect}" if @service.debug
+          @public = false
+          return true
+        end
+        r = REXML::Document.new(ret.read_body)
+        r.root.elements.each("entry") do |ele|
+          e = GData4Ruby::ACL::AccessRule.new(service, self)
+          ele = GData4Ruby::Utils.add_namespaces(ele)
+          e.load(ele.to_s)
+          @public == (e.role.include? 'read' and e.user == 'default')
+          break if @public
+        end
+      else
+        @public = false
       end
-      output += "&amp;"
+      return true
+    end
+    
+    #Helper function to return a formatted iframe embedded google calendar.  Parameters are:
+    #1. *params*: a hash of parameters that affect the display of the embedded calendar.  Accepts any parameter that the google iframe recognizes.  Here are the most common:
+    #   height:: the height of the embedded calendar in pixels
+    #   width:: the width of the embedded calendar in pixels
+    #   title:: the title to display
+    #   bgcolor:: the background color.  Limited choices, see google docs for allowable values.
+    #   color:: the color of the calendar elements.  Limited choices, see google docs for allowable values.
+    #   showTitle:: set to '0' to hide the title
+    #   showDate:: set to '0' to hide the current date
+    #   showNav:: set to '0 to hide the navigation tools
+    #   showPrint:: set to '0' to hide the print icon
+    #   showTabs:: set to '0' to hide the tabs
+    #   showCalendars:: set to '0' to hide the calendars selection drop down
+    #   showTz:: set to '0' to hide the timezone selection
+    #   border:: the border width in pixels
+    #   dates:: a range of dates to display in the format of 'yyyymmdd/yyyymmdd'.  Example: 20090820/20091001
+    #   privateKey:: use to display a private calendar.  You can find this key under the calendar settings pane of the Google Calendar website.
+    #   ctz:: The timezone to convert event times to
+    def to_iframe(params = {})
+      params[:height] ||= "600"
+      params[:width] ||= "600"
+      params[:title] ||= (self.account ? self.account : '')
+      params[:bgcolor] ||= "#FFFFFF"
+      params[:color] ||= "#2952A3"
+      params[:border] ||= "0"
+      puts "params = #{params.inspect}" if self.debug
+      output = "?#{params.to_a.collect{|a| a.join("=")}.join("&")}&"
+      puts "param_string = #{output}" if self.debug
+    
+      output += "src=#{@id}&color=#{params[:color]}"
+          
+      "<iframe src='http://www.google.com/calendar/embed?#{CGI.escape(output)}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
+    end
+    
+    #Helper function to return a specified calendar id as a formatted iframe embedded google calendar.  This function does not require loading the calendar information from the Google calendar
+    #service, but does require you know the google calendar id. 
+    #1. *id*: the unique google assigned id for the calendar to display.
+    #2. *params*: a hash of parameters that affect the display of the embedded calendar.  Accepts any parameter that the google iframe recognizes.  Here are the most common:
+    #   height:: the height of the embedded calendar in pixels
+    #   width:: the width of the embedded calendar in pixels
+    #   title:: the title to display
+    #   bgcolor:: the background color.  Limited choices, see google docs for allowable values.
+    #   color:: the color of the calendar elements.  Limited choices, see google docs for allowable values.
+    #   showTitle:: set to '0' to hide the title
+    #   showDate:: set to '0' to hide the current date
+    #   showNav:: set to '0 to hide the navigation tools
+    #   showPrint:: set to '0' to hide the print icon
+    #   showTabs:: set to '0' to hide the tabs
+    #   showCalendars:: set to '0' to hide the calendars selection drop down
+    #   showTz:: set to '0' to hide the timezone selection
+    #   border:: the border width in pixels
+    #   dates:: a range of dates to display in the format of 'yyyymmdd/yyyymmdd'.  Example: 20090820/20091001
+    #   privateKey:: use to display a private calendar.  You can find this key under the calendar settings pane of the Google Calendar website.
+    def self.to_iframe(id, params = {})
+      params[:height] ||= "600"
+      params[:width] ||= "600"
+      params[:title] ||= (self.account ? self.account : '')
+      params[:bgcolor] ||= "#FFFFFF"
+      params[:color] ||= "#2952A3"
+      params[:border] ||= "0"
+      puts "params = #{params.inspect}" if self.debug
+      output = "?#{params.to_a.collect{|a| a.join("=")}.join("&")}&"
+      puts "param_string = #{output}" if self.debug
+    
+      output += "src=#{id}&color=#{params[:color]}"
+          
+      "<iframe src='http://www.google.com/calendar/embed?#{CGI.escape(output)}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
     end
   
-    output += "src=#{params[:id]}&amp;color=#{CGI.escape(params[:color])}"
-        
-    "<iframe src='http://www.google.com/calendar/embed?#{output}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
-  end
-
-  private
-  @xml 
-  @exists = false
-  @public = false
-  @event_feed = ''
-  @edit_feed = ''
-  
-end 
-
+    private
+    def self.get_instance(service, d)
+      if d.is_a? Net::HTTPOK
+        xml = REXML::Document.new(d.read_body).root
+        if xml.name == 'feed'
+          xml = xml.elements.each("entry"){}[0]
+        end
+      else
+        xml = d
+      end
+      ele = GData4Ruby::Utils::add_namespaces(xml)
+      cal = Calendar.new(service)
+      cal.load(ele.to_s)
+      cal
+    end
+  end 
 end

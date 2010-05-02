@@ -69,7 +69,7 @@ def calendar_test
   end
   
   puts "3. Find Calendar by ID"
-  c = Calendar.find(@service, cal.id)
+  c = Calendar.find(@service, {:id => cal.id})
   if c.title == cal.title
     successful
   else
@@ -77,7 +77,7 @@ def calendar_test
   end
   
   puts "4. Delete Calendar"
-  if cal.delete and not cal.title
+  if cal.delete and not cal.exists?
     successful
   else
     failed
@@ -88,11 +88,12 @@ def event_test
   puts "---Starting Event Test---"
   
   puts "1. Create Event"
-  event = Event.new(@service.calendars[0])
+  event = Event.new(@service)
+  event.calendar = @service.calendars[0]
   event.title = "Test Event"
   event.content = "Test event content"
-  event.start = Time.now+1800
-  event.end = Time.now+5400
+  event.start_time = Time.now+1800
+  event.end_time = Time.now+5400
   if event.save
     successful event.to_xml
   else
@@ -113,7 +114,7 @@ def event_test
   end
   
   puts "4. Find Event by id"
-  e = Event.find(@service.calendars[0], event.id)
+  e = Event.find(@service, {:id => event.id})
   if e.title == event.title
     successful
   else
@@ -139,10 +140,11 @@ def event_recurrence_test
   @second_freq = {'weekly' => ['SA']}
   
   puts "1. Create Recurring Event"
-  event = Event.new(@service.calendars[0])
+  event = Event.new(@service)
+  event.calendar = @service.calendars[0]
   event.title = "Test Recurring Event"
   event.content = "Test event content"
-  event.recurrence = Recurrence.new({:start => @first_start, :end => @first_end, :frequency => @first_freq})
+  event.recurrence = Recurrence.new({:start_time => @first_start, :end_time => @first_end, :frequency => @first_freq})
   if event.save 
     successful event.to_xml
   else
@@ -151,7 +153,7 @@ def event_recurrence_test
   
   puts "2. Edit Recurrence"
   event.title = "Edited recurring title"
-  event.recurrence = Recurrence.new({:start => @second_start, :end => @second_end, :frequency => @second_freq})
+  event.recurrence = Recurrence.new({:start_time => @second_start, :end_time => @second_end, :frequency => @second_freq})
   if event.save 
     successful event.to_xml
   else

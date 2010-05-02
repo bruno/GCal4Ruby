@@ -1,4 +1,21 @@
 #=CHANGELOG
+#==version 0.5.0 - MAJOR CHANGES
+#* Now using GData4Ruby library as base class for service, calendar, and event objects.  This removed the base.rb class, which is now inherited from
+#  GData4ruby
+#* Added 'events' method to service to get all events for an account.
+#* Major interface changes to find methods - these are not backwards compatible changes.
+#* Changed Event#find default behavior to search all calendars.
+#* Major interface changes to to_iframe methods - these are not backwards compatible changes.
+#* Added support for multiple reminders.
+#* Improved object relationship for events.  Events are now service-centric, i.e. events are instantiated with a service object.
+#* Event calendar is now set through a 'calendar' attribute.
+#* Fixes to event recurrence handling and display.
+#* Added support for reminders with recurring events.
+#* Numerous improvements to performance.
+#* Calendar objects no longer have to query ACL feed to determine editability.
+#* Added support for event statuses: cancelled, tentative or confirmed.
+#==version 0.3.2
+#* Updated the Event.find method to support finding all events by passing :all as the query term.
 #==version 0.3.1
 #* Fixed Event.find method to work with secondary calendars and google apps accounts.  Fix provided by groesser3.
 #* Added max results to Calendar.find.

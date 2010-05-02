@@ -1,3 +1,21 @@
+# Author:: Mike Reich (mike@seabourneconsulting.com)
+# Copyright:: Copyright (C) 2010 Mike Reich
+# License:: GPL v2
+#--
+# Licensed under the General Public License (GPL), Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+# Feel free to use and update, but be sure to contribute your
+# code back to the project and attribute as required by the license.
+#++
+
 class Time
   #Returns a ISO 8601 complete formatted string of the time
   def complete
@@ -15,9 +33,9 @@ module GCal4Ruby
   #the RFC 2445 iCalendar recurrence description.
   class Recurrence
     #The event start date/time
-    attr_reader :start
+    attr_reader :start_time
     #The event end date/time
-    attr_reader :end
+    attr_reader :end_time
     #the event reference
     attr_reader :event
     #The date until which the event will be repeated
@@ -46,18 +64,18 @@ module GCal4Ruby
         key, value = val.split(":")
         case key
           when 'DTSTART'
-            @start = Time.parse_complete(value)
+            @start_time = Time.parse_complete(value)
           when 'DTSTART;VALUE=DATE'
-            @start = Time.parse(value)
+            @start_time = Time.parse(value)
             @all_day = true
           when 'DTSTART;VALUE=DATE-TIME'
-            @start = Time.parse_complete(value)
+            @start_time = Time.parse_complete(value)
           when 'DTEND'
-            @end = Time.parse_complete(value)
+            @end_time = Time.parse_complete(value)
           when 'DTEND;VALUE=DATE'
-            @end = Time.parse(value)
+            @end_time = Time.parse(value)
           when 'DTEND;VALUE=DATE-TIME'
-            @end = Time.parse_complete(value)
+            @end_time = Time.parse_complete(value)
           when 'RRULE'
             vals = value.split(";")
             key = ''
@@ -82,19 +100,61 @@ module GCal4Ruby
       end
     end
     
-    #Returns a string with the correctly formatted ISO 8601 recurrence rule
     def to_s
+      output = ''
+      if @frequency
+        f = ''
+        i = ''
+        by = ''
+        @frequency.each do |key, v|
+          if v.is_a?(Array) 
+            if v.size > 0
+              value = v.join(",") 
+            else
+              value = nil
+            end
+          else
+            value = v
+          end
+          f += "#{key.downcase} " if key != 'interval'
+          case key.downcase
+            when "secondly"
+              by += "every #{value} second"
+            when "minutely"
+              by += "every #{value} minute"
+            when "hourly"
+              by += "every #{value} hour"
+            when "weekly"
+              by += "on #{value}" if value
+            when "monthly"
+              by += "on #{value}"
+            when "yearly"
+              by += "on the #{value} day of the year"
+            when 'interval'
+              i += "for #{value} times"
+          end
+        end
+        output += f+i+by
+      end      
+      if @repeat_until
+        output += " and repeats until #{@repeat_until.strftime("%m/%d/%Y")}"
+      end
+      output
+    end
+    
+    #Returns a string with the correctly formatted ISO 8601 recurrence rule
+    def to_recurrence_string
       
       output = ''
       if @all_day
-        output += "DTSTART;VALUE=DATE:#{@start.utc.strftime("%Y%m%d")}\n"
+        output += "DTSTART;VALUE=DATE:#{@start_time.utc.strftime("%Y%m%d")}\n"
       else
-        output += "DTSTART;VALUE=DATE-TIME:#{@start.complete}\n"
+        output += "DTSTART;VALUE=DATE-TIME:#{@start_time.complete}\n"
       end
       if @all_day
-        output += "DTEND;VALUE=DATE:#{@end.utc.strftime("%Y%m%d")}\n"
+        output += "DTEND;VALUE=DATE:#{@end_time.utc.strftime("%Y%m%d")}\n"
       else
-        output += "DTEND;VALUE=DATE-TIME:#{@end.complete}\n"
+        output += "DTEND;VALUE=DATE-TIME:#{@end_time.complete}\n"
       end
       output += "RRULE:"
       if @frequency
@@ -139,20 +199,20 @@ module GCal4Ruby
     end
     
     #Sets the start date/time.  Must be a Time object.
-    def start=(s)
+    def start_time=(s)
       if not s.is_a?(Time)
         raise RecurrenceValueError, "Start must be a date or a time"
       else
-        @start = s
+        @start_time = s
       end
     end
     
     #Sets the end Date/Time. Must be a Time object.
-    def end=(e)
+    def end_time=(e)
       if not e.is_a?(Time)
         raise RecurrenceValueError, "End must be a date or a time"
       else
-        @end = e
+        @end_time = e
       end
     end
     

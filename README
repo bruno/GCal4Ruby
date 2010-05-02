@@ -10,7 +10,7 @@
 #and is licenses under the GPL v2.  Feel free to use and update, but be sure to contribute your
 #code back to the project and attribute as required by the license.
 #===Website
-#http://rubyforge.org/projects/gcal4ruby/
+#http://cookingandcoding.com/gcal4ruby/
 #
 #==Description
 #GCal4Ruby has three major components: the service, calendar and event objects.  Each service
@@ -33,53 +33,65 @@
 #1. Create a new Calendar
 #    cal = Calendar.new(service)
 #
-#2. Find an existing Calendar
-#    cal = Calendar.find(service, "New Calendar", :first)
+#2. Find a calendar by ID
+#    cal = Calendar.find(service, {:id => cal_id})
 #
-#3. Find all calendars containing the search term
+#3. Get all calendar events
+#    cal = Calendar.find(service, {:id => cal_id})
+#    events = cal.events
+#
+#4. Find an existing calendar by title
+#    cal = Calendar.find(service, {:title => "New Calendar"})
+#
+#5. Find all calendars containing a search term
 #    cal = Calendar.find(service, "Soccer Team")
-#
-#4. Find a calendar by ID
-#    cal = Calendar.find(service, id, :first)
 #===Event
 #All usages assume a successfully authenticated Service and valid Calendar.
 #1. Create a new Event
-#    event = Event.new(calendar)
-#    event.title = "Soccer Game"
-#    event.start = Time.parse("12-06-2009 at 12:30 PM")
-#    event.end = Time.parse("12-06-2009 at 1:30 PM")
-#    event.where = "Merry Playfields"
+#    event = Event.new(service, {:calendar => cal, :title => "Soccer Game", :start => Time.parse("12-06-2009 at 12:30 PM"), :end => Time.parse("12-06-2009 at 1:30 PM"), :where => "Merry Playfields"})
 #    event.save
 #
-#2. Find an existing Event
-#    event = Event.find(cal, "Soccer Game", {:scope => :first})
+#2. Find an existing Event by title
+#    event = Event.find(service, {:title => "Soccer Game"})
 #
-#3. Find all events containing the search term
-#    event = Event.find(cal, "Soccer Game")
+#3. Find an existing Event by ID
+#    event = Event.find(service, {:id => event.id})
 #
-#4. Create a recurring event for every saturday
-#    event = Event.new(calendar)
+#4. Find all events containing the search term
+#    event = Event.find(service, "Soccer Game")
+#
+#5. Find all events on a calendar containing the search term
+#    event = Event.find(service, "Soccer Game", {:calendar => cal.id})
+#
+#6. Find events within a date range
+#    event = Event.find(service, "Soccer Game", {'start-min' => Time.parse("01/01/2010").utc.xmlschema, 'start-max' => Time.parse("06/01/2010").utc.xmlschema})
+#
+#7. Create a recurring event for every saturday
+#    event = Event.new(service)
 #    event.title = "Baseball Game"
+#    event.calendar = cal
 #    event.where = "Municipal Stadium"
 #    event.recurrence = Recurrence.new
-#    event.recurrence.start = Time.parse("13-06-2009 at 4:30 PM")
-#    event.recurrence.end = Time.parse("13-06-2009 at 6:30 PM")
+#    event.recurrence.start_time = Time.parse("06/20/2009 at 4:30 PM")
+#    event.recurrence.end_time = Time.parse("06/20/2009 at 6:30 PM")
 #    event.recurrence.frequency = {"weekly" => ["SA"]}
 #    event.save 
 #
-#5. Create an event with a 15 minute email reminder
-#    event = Event.new(calendar)
+#8. Create an event with a 15 minute email reminder
+#    event = Event.new(service)
+#    event.calendar = cal
 #    event.title = "Dinner with Kate"
-#    event.start = Time.parse("20-06-2009 at 5 pm")
-#    event.end = Time.parse("20-06-209 at 8 pm")
+#    event.start_time = Time.parse("06/20/2009 at 5 pm")
+#    event.end_time = Time.parse("06/20/2009 at 8 pm")
 #    event.where = "Luigi's"
 #    event.reminder = {:minutes => 15, :method => 'email'}
 #    event.save
 #
-#6. Create an event with attendees
-#    event = Event.new(calendar)
+#9. Create an event with attendees
+#    event = Event.new(service)
+#    event.calendar = cal
 #    event.title = "Dinner with Kate"
-#    event.start = Time.parse("20-06-2009 at 5 pm")
-#    event.end = Time.parse("20-06-209 at 8 pm")
+#    event.start_time = Time.parse("06/20/2009 at 5 pm")
+#    event.end_time = Time.parse("06/20/2009 at 8 pm")
 #    event.attendees => {:name => "Kate", :email => "kate@gmail.com"}
 #    event.save
