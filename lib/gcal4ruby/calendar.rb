@@ -93,7 +93,6 @@ module GCal4Ruby
       @timezone ||= "America/Los_Angeles"
       @color ||= "#2952A3"
       @where ||= ""
-      @permissions = ''
       attributes.each do |key, value|
         self.send("#{key}=", value)
       end
@@ -125,15 +124,23 @@ module GCal4Ruby
       return events
     end
     
+    def save
+      public = @public
+      super
+      if public == true
+        puts 'setting calendar to public' if service.debug
+        rule = GData4Ruby::ACL::AccessRule.new(service, self)
+        rule.role = 'http://schemas.google.com/gCal/2005#read'
+        rule.save
+        reload
+      end
+    end
+    
     #Set the calendar to public (p = true) or private (p = false).  Publically viewable
     #calendars can be accessed by anyone without having to log in to google calendar.  See
     #Calendar#to_iframe on how to display a public calendar in a webpage.
     def public=(p)
-      if p
-        @permissions = 'http://schemas.google.com/gCal/2005#read' 
-      else
-        @permissions = 'none'
-      end
+      @public = p
     end
     
     #Creates a new instance of the object
@@ -207,8 +214,6 @@ module GCal4Ruby
           ele.attributes["value"] = @color
         when "selected"
           ele.attributes["value"] = @selected.to_s
-        when 'role'
-          ele.attributes['value'] = @permissions
         end
       end
       xml.to_s
@@ -259,7 +264,9 @@ module GCal4Ruby
           e = GData4Ruby::ACL::AccessRule.new(service, self)
           ele = GData4Ruby::Utils.add_namespaces(ele)
           e.load(ele.to_s)
-          @public == (e.role.include? 'read' and e.user == 'default')
+          puts 'acl rule = '+e.inspect if service.debug
+          @public = (e.role.include? 'read' and e.user == 'default')
+          puts 'public = '+@public.to_s if service.debug
           break if @public
         end
       else
@@ -289,13 +296,13 @@ module GCal4Ruby
     def to_iframe(params = {})
       params[:height] ||= "600"
       params[:width] ||= "600"
-      params[:title] ||= (self.account ? self.account : '')
+      params[:title] ||= (self.title ? self.title : '')
       params[:bgcolor] ||= "#FFFFFF"
       params[:color] ||= "#2952A3"
       params[:border] ||= "0"
-      puts "params = #{params.inspect}" if self.debug
+      puts "params = #{params.inspect}" if service.debug
       output = "?#{params.to_a.collect{|a| a.join("=")}.join("&")}&"
-      puts "param_string = #{output}" if self.debug
+      puts "param_string = #{output}" if service.debug
     
       output += "src=#{@id}&color=#{params[:color]}"
           
@@ -324,13 +331,10 @@ module GCal4Ruby
     def self.to_iframe(id, params = {})
       params[:height] ||= "600"
       params[:width] ||= "600"
-      params[:title] ||= (self.account ? self.account : '')
       params[:bgcolor] ||= "#FFFFFF"
       params[:color] ||= "#2952A3"
       params[:border] ||= "0"
-      puts "params = #{params.inspect}" if self.debug
       output = "?#{params.to_a.collect{|a| a.join("=")}.join("&")}&"
-      puts "param_string = #{output}" if self.debug
     
       output += "src=#{id}&color=#{params[:color]}"
           

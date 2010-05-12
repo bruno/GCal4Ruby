@@ -1,4 +1,8 @@
 #=CHANGELOG
+#==version 0.5.2
+#* Fixed calendar.public functionality for making calendars publicly viewable.
+#==version 0.5.1
+#* Minor fixes to to_iframe methods
 #==version 0.5.0 - MAJOR CHANGES
 #* Now using GData4Ruby library as base class for service, calendar, and event objects.  This removed the base.rb class, which is now inherited from
 #  GData4ruby
