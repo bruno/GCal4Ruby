@@ -121,16 +121,15 @@ module GCal4Ruby
     #Creates a new Event.  Accepts a valid Service object and optional attributes hash.
     def initialize(service, attributes = {})
       super(service, attributes)
-      attributes.each do |key, value|
-        self.send("#{key}=", value)
-      end
       @xml = EVENT_XML
-      @transparency ||= "http://schemas.google.com/g/2005#event.opaque"
-      @status ||= "http://schemas.google.com/g/2005#event.confirmed"
+      @transparency ||= :busy
+      @status ||= :confirmed
       @attendees ||= []
       @all_day ||= false
       @reminder = []
-      @start_time = @end_time = @calendar_id = nil
+      attributes.each do |key, value|
+        self.send("#{key}=", value)
+      end
     end
     
     #Sets the reminder options for the event.  Parameter must be a hash a :minutes key with a value of 5 up to 40320 (4 weeks)

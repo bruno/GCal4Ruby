@@ -116,7 +116,6 @@ module GCal4Ruby
     #   width:: the width of the embedded calendar in pixels
     #   title:: the title to display
     #   bgcolor:: the background color.  Limited choices, see google docs for allowable values.
-    #   color:: the color of the calendar elements.  Limited choices, see google docs for allowable values.
     #   showTitle:: set to '0' to hide the title
     #   showDate:: set to '0' to hide the current date
     #   showNav:: set to '0 to hide the navigation tools
@@ -134,17 +133,15 @@ module GCal4Ruby
       params[:width] ||= "600"
       params[:title] ||= (self.account ? self.account : '')
       params[:bgcolor] ||= "#FFFFFF"
-      params[:color] ||= "#2952A3"
       params[:border] ||= "0"
-      puts "params = #{params.inspect}" if self.debug
-      output = "?#{params.to_a.collect{|a| a.join("=")}.join("&")}&"
-      puts "param_string = #{output}" if self.debug
+      params.each{|key, value| params[key] = CGI::escape(value)}
+      output = "#{params.to_a.collect{|a| a.join("=")}.join("&")}&"
       
       if cals.is_a?(Array)
         for c in cals
           output += "src=#{c}&"
           if colors and colors[c]
-            output += "color=#{colors[c]}&"
+            output += "color=%23#{colors[c].gsub("#", "")}&"
           end
         end
       elsif cals == :all
@@ -157,7 +154,7 @@ module GCal4Ruby
         output += "src=#{cal_list[0].id}&"
       end
           
-      "<iframe src='http://www.google.com/calendar/embed?#{CGI::escape(output)}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"
+      "<iframe src='http://www.google.com/calendar/embed?#{output}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"
     end
   end
 end

@@ -1,6 +1,12 @@
 #=CHANGELOG
+#==version 0.5.4
+#* Fixed Service#to_iframe bgcolor bug
+#==version 0.5.3
+#* Fixed bug when loading event attributes when initializing
 #==version 0.5.2
 #* Fixed calendar.public functionality for making calendars publicly viewable.
+#* Fixed to_iframe output methods
+#* Fixed issue with creating new events
 #==version 0.5.1
 #* Minor fixes to to_iframe methods
 #==version 0.5.0 - MAJOR CHANGES

@@ -124,16 +124,22 @@ module GCal4Ruby
       return events
     end
     
+    
+    #Saves the calendar.
     def save
       public = @public
-      super
-      if public == true
+      ret = super
+      return ret if public == @public
+      if public
         puts 'setting calendar to public' if service.debug
         rule = GData4Ruby::ACL::AccessRule.new(service, self)
         rule.role = 'http://schemas.google.com/gCal/2005#read'
         rule.save
-        reload
+      else
+        rule = GData4Ruby::ACL::AccessRule.find(service, self, {:user => 'default'})
+        rule.delete if rule
       end
+      reload
     end
     
     #Set the calendar to public (p = true) or private (p = false).  Publically viewable
@@ -191,7 +197,7 @@ module GCal4Ruby
     #if successful, otherwise returns false.  Any information not saved will be overwritten.
     def reload
       return false if not @exists
-      t = self.find(service, @id)
+      t = Calendar.find(service, {:id => @id})
       if t
         load(t.to_xml)
       else
@@ -300,13 +306,12 @@ module GCal4Ruby
       params[:bgcolor] ||= "#FFFFFF"
       params[:color] ||= "#2952A3"
       params[:border] ||= "0"
-      puts "params = #{params.inspect}" if service.debug
-      output = "?#{params.to_a.collect{|a| a.join("=")}.join("&")}&"
-      puts "param_string = #{output}" if service.debug
+      params.each{|key, value| params[key] = CGI::escape(value)}
+      output = "#{params.to_a.collect{|a| a.join("=")}.join("&")}"
     
-      output += "src=#{@id}&color=#{params[:color]}"
+      output += "&src=#{id}"
           
-      "<iframe src='http://www.google.com/calendar/embed?#{CGI.escape(output)}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
+      "<iframe src='http://www.google.com/calendar/embed?#{output}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
     end
     
     #Helper function to return a specified calendar id as a formatted iframe embedded google calendar.  This function does not require loading the calendar information from the Google calendar
@@ -334,11 +339,12 @@ module GCal4Ruby
       params[:bgcolor] ||= "#FFFFFF"
       params[:color] ||= "#2952A3"
       params[:border] ||= "0"
-      output = "?#{params.to_a.collect{|a| a.join("=")}.join("&")}&"
+      params.each{|key, value| params[key] = CGI::escape(value)}
+      output = "#{params.to_a.collect{|a| a.join("=")}.join("&")}"
     
-      output += "src=#{id}&color=#{params[:color]}"
+      output += "&src=#{id}"
           
-      "<iframe src='http://www.google.com/calendar/embed?#{CGI.escape(output)}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
+      "<iframe src='http://www.google.com/calendar/embed?#{output}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
     end
   
     private
