@@ -1,4 +1,8 @@
 #=CHANGELOG
+#==version 0.5.5 
+#* Fixed calendar::find method.  Thanks to AB <a.berezovskiy@gmail.com>.
+#* Improved recurrence handling.  Thanks to John Paul Narowski <jnarowski@gmail.com>.
+#* Fixed documentation bug for event reminders.
 #==version 0.5.4
 #* Fixed Service#to_iframe bgcolor bug
 #==version 0.5.3

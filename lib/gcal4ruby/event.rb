@@ -60,7 +60,7 @@ module GCal4Ruby
   #    event.start_time = Time.parse("06/20/2009 at 5 pm")
   #    event.end_time = Time.parse("06/20/2009 at 8 pm")
   #    event.where = "Luigi's"
-  #    event.reminder = {:minutes => 15, :method => 'email'}
+  #    event.reminder = [{:minutes => 15, :method => 'email'}]
   #    event.save
   #
   #9. Create an event with attendees
@@ -111,7 +111,7 @@ module GCal4Ruby
     attr_accessor :status
     #Flag indicating whether it is an all day event
     attr_reader :all_day    
-    #The reminder settings for the event, returned as a hash
+    #An array of reminders. Each item in the array is a hash representing the event reminder.
     attr_reader :reminder
     #The date the event was last edited
     attr_reader :edited
@@ -132,7 +132,7 @@ module GCal4Ruby
       end
     end
     
-    #Sets the reminder options for the event.  Parameter must be a hash a :minutes key with a value of 5 up to 40320 (4 weeks)
+    #Sets the reminder options for the event.  Parameter must be an array of hashes containing a :minutes key with a value of 5 up to 40320 (4 weeks)
     #and a :method key of with a value of one the following:
     #alert:: causes an alert to appear when a user is viewing the calendar in a browser
     #email:: sends the user an email message

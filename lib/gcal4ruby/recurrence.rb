@@ -57,45 +57,31 @@ module GCal4Ruby
       @all_day ||= false
     end
     
-    #Accepts a string containing a properly formatted ISO 8601 recurrence rule and loads it into the recurrence object
+    #Accepts a string containing a properly formatted ISO 8601 recurrence rule and loads it into the recurrence object.  
+    #Contributed by John Paul Narowski.
     def load(rec)
+      @frequency = {}
       attrs = rec.split("\n")
       attrs.each do |val|
         key, value = val.split(":")
-        case key
-          when 'DTSTART'
-            @start_time = Time.parse_complete(value)
-          when 'DTSTART;VALUE=DATE'
-            @start_time = Time.parse(value)
-            @all_day = true
-          when 'DTSTART;VALUE=DATE-TIME'
-            @start_time = Time.parse_complete(value)
-          when 'DTEND'
-            @end_time = Time.parse_complete(value)
-          when 'DTEND;VALUE=DATE'
-            @end_time = Time.parse(value)
-          when 'DTEND;VALUE=DATE-TIME'
-            @end_time = Time.parse_complete(value)
-          when 'RRULE'
-            vals = value.split(";")
-            key = ''
-            by = ''
-            int = nil
-            vals.each do |rr|
-              a, h = rr.split("=")
-              case a 
-                when 'FREQ'
-                  key = h.downcase.capitalize
-                when 'INTERVAL'
-                  int = h
-                when 'UNTIL'
-                  @repeat_until = Time.parse(value)
-                else
-                  by = h.split(",")
+        if key == 'RRULE'
+          value.split(";").each do |rr| 
+            rr_key, rr_value = rr.split("=")
+            rr_key = rr_key.downcase.to_sym
+            unless @frequency.has_key?(rr_key)
+              if rr_key == :until
+                @repeat_until = Time.parse_complete(rr_value)
+              else
+                @frequency[rr_key] = rr_value 
               end
             end
-            @frequency = {key => by}
-            @frequency.merge({'interval' => int}) if int
+          end
+        elsif key == 'INTERVAL'
+          @frequency[:inverval] = value.to_i
+        elsif key.include?("DTSTART;TZID")
+          @start_time = Time.parse_complete(value)
+        elsif key.include?("DTEND;TZID")
+          @end_time = Time.parse_complete(value)
         end
       end
     end
@@ -119,19 +105,19 @@ module GCal4Ruby
           f += "#{key.downcase} " if key != 'interval'
           case key.downcase
             when "secondly"
-              by += "every #{value} second"
+            by += "every #{value} second"
             when "minutely"
-              by += "every #{value} minute"
+            by += "every #{value} minute"
             when "hourly"
-              by += "every #{value} hour"
+            by += "every #{value} hour"
             when "weekly"
-              by += "on #{value}" if value
+            by += "on #{value}" if value
             when "monthly"
-              by += "on #{value}"
+            by += "on #{value}"
             when "yearly"
-              by += "on the #{value} day of the year"
+            by += "on the #{value} day of the year"
             when 'interval'
-              i += "for #{value} times"
+            i += "for #{value} times"
           end
         end
         output += f+i+by
@@ -143,11 +129,11 @@ module GCal4Ruby
     end
     
     #Returns a string with the correctly formatted ISO 8601 recurrence rule
-    def to_recurrence_string
-      
-      output = ''
-      if @all_day
-        output += "DTSTART;VALUE=DATE:#{@start_time.utc.strftime("%Y%m%d")}\n"
+        def to_recurrence_string
+          
+          output = ''
+          if @all_day
+            output += "DTSTART;VALUE=DATE:#{@start_time.utc.strftime("%Y%m%d")}\n"
       else
         output += "DTSTART;VALUE=DATE-TIME:#{@start_time.complete}\n"
       end
@@ -174,19 +160,19 @@ module GCal4Ruby
           f += "#{key.upcase};" if key != 'interval'
           case key.downcase
             when "secondly"
-              by += "BYSECOND=#{value};"
+            by += "BYSECOND=#{value};"
             when "minutely"
-              by += "BYMINUTE=#{value};"
+            by += "BYMINUTE=#{value};"
             when "hourly"
-              by += "BYHOUR=#{value};"
+            by += "BYHOUR=#{value};"
             when "weekly"
-              by += "BYDAY=#{value};" if value
+            by += "BYDAY=#{value};" if value
             when "monthly"
-              by += "BYDAY=#{value};"
+            by += "BYDAY=#{value};"
             when "yearly"
-              by += "BYYEARDAY=#{value};"
+            by += "BYYEARDAY=#{value};"
             when 'interval'
-              i += "INTERVAL=#{value};"
+            i += "INTERVAL=#{value};"
           end
         end
         output += f+i+by

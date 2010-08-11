@@ -182,7 +182,7 @@ module GCal4Ruby
         cals.each do |cal|
           if query.is_a?(Hash)
             results << cal if query[:query] and cal.title.downcase.include? query[:query].downcase
-            results << cal if query[:title] and cal.title == query[:query]
+            results << cal if query[:title] and cal.title == query[:title]
           else
             results << cal if cal.title.downcase.include? query.downcase
           end
@@ -210,21 +210,21 @@ module GCal4Ruby
       xml = REXML::Document.new(super)
       xml.root.elements.each(){}.map do |ele|
         case ele.name
-        when "summary"
+          when "summary"
           ele.text = @summary
-        when "timezone"
+          when "timezone"
           ele.attributes["value"] = @timezone
-        when "hidden"
+          when "hidden"
           ele.attributes["value"] = @hidden.to_s
-        when "color"
+          when "color"
           ele.attributes["value"] = @color
-        when "selected"
+          when "selected"
           ele.attributes["value"] = @selected.to_s
         end
       end
       xml.to_s
     end
-  
+    
     #Loads the Calendar with returned data from Google Calendar feed.  Returns true if successful.
     def load(string)
       super(string)
@@ -234,23 +234,23 @@ module GCal4Ruby
       xml.root.elements.each(){}.map do |ele|
         case ele.name
           when "id"
-            @id = ele.text.gsub("http://www.google.com/calendar/feeds/default/calendars/", "")
+          @id = ele.text.gsub("http://www.google.com/calendar/feeds/default/calendars/", "")
           when 'summary'
-            @summary = ele.text
+          @summary = ele.text
           when "color"
-            @color = ele.attributes['value']
+          @color = ele.attributes['value']
           when 'hidden'
-            @hidden = ele.attributes["value"] == "true" ? true : false
+          @hidden = ele.attributes["value"] == "true" ? true : false
           when 'timezone'
-            @timezone = ele.attributes["value"]
+          @timezone = ele.attributes["value"]
           when "selected"
-            @selected = ele.attributes["value"] == "true" ? true : false
+          @selected = ele.attributes["value"] == "true" ? true : false
           when "link"
-            if ele.attributes['rel'] == 'edit'
-              @edit_feed = ele.attributes['href']
-            end
+          if ele.attributes['rel'] == 'edit'
+            @edit_feed = ele.attributes['href']
+          end
           when 'accesslevel'
-            @editable = (ele.attributes["value"] == 'editor' or ele.attributes["value"] == 'owner' or ele.attributes["value"] == 'root')
+          @editable = (ele.attributes["value"] == 'editor' or ele.attributes["value"] == 'owner' or ele.attributes["value"] == 'root')
         end
       end
       
@@ -308,9 +308,9 @@ module GCal4Ruby
       params[:border] ||= "0"
       params.each{|key, value| params[key] = CGI::escape(value)}
       output = "#{params.to_a.collect{|a| a.join("=")}.join("&")}"
-    
+      
       output += "&src=#{id}"
-          
+      
       "<iframe src='http://www.google.com/calendar/embed?#{output}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
     end
     
@@ -341,12 +341,12 @@ module GCal4Ruby
       params[:border] ||= "0"
       params.each{|key, value| params[key] = CGI::escape(value)}
       output = "#{params.to_a.collect{|a| a.join("=")}.join("&")}"
-    
+      
       output += "&src=#{id}"
-          
+      
       "<iframe src='http://www.google.com/calendar/embed?#{output}' style='#{params[:border]} px solid;' width='#{params[:width]}' height='#{params[:height]}' frameborder='#{params[:border]}' scrolling='no'></iframe>"  
     end
-  
+    
     private
     def self.get_instance(service, d)
       if d.is_a? Net::HTTPOK
