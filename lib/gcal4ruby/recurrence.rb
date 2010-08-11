@@ -78,10 +78,15 @@ module GCal4Ruby
           end
         elsif key == 'INTERVAL'
           @frequency[:inverval] = value.to_i
-        elsif key.include?("DTSTART;TZID")
+        elsif key.include?("DTSTART;TZID") or key.include?("DTSTART") or key.include?('DTSTART;VALUE=DATE-TIME')
           @start_time = Time.parse_complete(value)
-        elsif key.include?("DTEND;TZID")
+        elsif key.include?('DTSTART;VALUE=DATE')
+          @start_time = Time.parse(value)
+          @all_day = true
+        elsif key.include?("DTEND;TZID") or key.include?("DTEND") or key.include?('DTEND;VALUE=DATE-TIME')
           @end_time = Time.parse_complete(value)
+        elsif key.include?('DTEND;VALUE=DATE')
+          @end_time = Time.parse(value)
         end
       end
     end
@@ -129,11 +134,10 @@ module GCal4Ruby
     end
     
     #Returns a string with the correctly formatted ISO 8601 recurrence rule
-        def to_recurrence_string
-          
-          output = ''
-          if @all_day
-            output += "DTSTART;VALUE=DATE:#{@start_time.utc.strftime("%Y%m%d")}\n"
+    def to_recurrence_string
+      output = ''
+      if @all_day
+        output += "DTSTART;VALUE=DATE:#{@start_time.utc.strftime("%Y%m%d")}\n"
       else
         output += "DTSTART;VALUE=DATE-TIME:#{@start_time.complete}\n"
       end
@@ -157,8 +161,8 @@ module GCal4Ruby
           else
             value = v
           end
-          f += "#{key.upcase};" if key != 'interval'
-          case key.downcase
+          f += "#{key.to_s.upcase};" if key != 'interval'
+          case key.to_s.downcase
             when "secondly"
             by += "BYSECOND=#{value};"
             when "minutely"
