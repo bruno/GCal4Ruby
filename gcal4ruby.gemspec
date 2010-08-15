@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
    s.name = %q{gcal4ruby}
    s.version = "0.5.5"
-   s.date = %q{2010-08-11}
+   s.date = %q{2010-08-15}
    s.authors = ["Mike Reich"]
    s.email = %q{mike@seabourneconsulting.com}
    s.summary = %q{A full featured wrapper for interacting with the Google Calendar API}
@@ -11,5 +11,5 @@ Gem::Specification.new do |s|
    s.rubyforge_project = 'gcal4ruby'
    s.has_rdoc = true
    s.test_files = ['test/unit.rb'] 
-   s.add_dependency('gdata4ruby', '>= 0.1.3')
+   s.add_dependency('gdata4ruby', '>= 0.1.5')
 end 

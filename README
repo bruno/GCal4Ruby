@@ -7,8 +7,10 @@
 #
 #==Author and Contact Information
 #GCal4Ruby was created and is maintained by {Mike Reich}[mailto:mike@seabourneconsulting.com] 
-#and is licenses under the GPL v2.  Feel free to use and update, but be sure to contribute your
-#code back to the project and attribute as required by the license.
+#and is licenses under the LGPL v3.  Feel free to use and update, but be sure to contribute your
+#code back to the project and attribute as required by the license.  You can find the text of the LGPL 
+#here: http://www.gnu.org/licenses/lgpl.html.
+#
 #===Website
 #http://cookingandcoding.com/gcal4ruby/
 #
