@@ -209,7 +209,7 @@ module GCal4Ruby
     
     #The event start time.  If a recurring event, the recurrence start time.
     def start_time
-      return @start_time ? @start_time : @recurrence ? @recurrence .start_time : nil
+      return @start_time ? @start_time : @recurrence ? @recurrence.start_time : nil
     end
     
     #The event end time.  If a recurring event, the recurrence end time.

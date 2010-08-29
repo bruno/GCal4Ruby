@@ -17,15 +17,24 @@
 #++
 
 class Time
+  
   #Returns a ISO 8601 complete formatted string of the time
   def complete
     self.utc.strftime("%Y%m%dT%H%M%S")
   end
   
   def self.parse_complete(value)
-    d, h = value.split("T")
-    return Time.parse(d+" "+h.gsub("Z", ""))
+    unless value.blank?
+      if value.include?("T")
+        d, h = value.split("T")
+        return Time.parse(d+" "+h.gsub("Z", ""))
+      else
+        value = value.to_s
+        return Time.parse("#{value[0..3]}-#{value[4..5]}-#{value[6..7]}")
+      end
+    end
   end
+
 end
 
 module GCal4Ruby
@@ -77,20 +86,21 @@ module GCal4Ruby
             end
           end
         elsif key == 'INTERVAL'
-          @frequency[:inverval] = value.to_i
+          @frequency[:interval] = value.to_i unless value.blank?
         elsif key.include?("DTSTART;TZID") or key.include?("DTSTART") or key.include?('DTSTART;VALUE=DATE-TIME')
-          @start_time = Time.parse_complete(value)
+          @start_time ||= Time.parse_complete(value)
         elsif key.include?('DTSTART;VALUE=DATE')
-          @start_time = Time.parse(value)
+          @start_time ||= Time.parse(value)
           @all_day = true
         elsif key.include?("DTEND;TZID") or key.include?("DTEND") or key.include?('DTEND;VALUE=DATE-TIME')
-          @end_time = Time.parse_complete(value)
+          @end_time ||= Time.parse_complete(value)
         elsif key.include?('DTEND;VALUE=DATE')
-          @end_time = Time.parse(value)
+          @end_time ||= Time.parse(value)
         end
       end
+      @frequency[:interval] = 1 unless @frequency[:interval] && @frequency[:interval].to_i > 0
     end
-    
+            
     def to_s
       output = ''
       if @frequency
@@ -98,6 +108,8 @@ module GCal4Ruby
         i = ''
         by = ''
         @frequency.each do |key, v|
+          key = key.to_s.downcase
+          
           if v.is_a?(Array) 
             if v.size > 0
               value = v.join(",") 
@@ -107,8 +119,8 @@ module GCal4Ruby
           else
             value = v
           end
-          f += "#{key.downcase} " if key != 'interval'
-          case key.downcase
+          f += "#{key} " if key != 'interval'
+          case key
             when "secondly"
             by += "every #{value} second"
             when "minutely"
@@ -139,18 +151,19 @@ module GCal4Ruby
       if @all_day
         output += "DTSTART;VALUE=DATE:#{@start_time.utc.strftime("%Y%m%d")}\n"
       else
-        output += "DTSTART;VALUE=DATE-TIME:#{@start_time.complete}\n"
+        output += "DTSTART;VALUE=DATE-TIME:#{@start_time.utc.complete}\n"
       end
       if @all_day
         output += "DTEND;VALUE=DATE:#{@end_time.utc.strftime("%Y%m%d")}\n"
       else
-        output += "DTEND;VALUE=DATE-TIME:#{@end_time.complete}\n"
+        output += "DTEND;VALUE=DATE-TIME:#{@end_time.utc.complete}\n"
       end
       output += "RRULE:"
       if @frequency
         f = 'FREQ='
         i = ''
         by = ''
+        day_of_week = @frequency.delete(:day_of_week)
         @frequency.each do |key, v|
           if v.is_a?(Array) 
             if v.size > 0
@@ -161,7 +174,7 @@ module GCal4Ruby
           else
             value = v
           end
-          f += "#{key.to_s.upcase};" if key != 'interval'
+          f += "#{key.to_s.upcase};" if key.to_s.downcase != 'interval'
           case key.to_s.downcase
             when "secondly"
             by += "BYSECOND=#{value};"
@@ -172,19 +185,22 @@ module GCal4Ruby
             when "weekly"
             by += "BYDAY=#{value};" if value
             when "monthly"
-            by += "BYDAY=#{value};"
+              if day_of_week
+                by += "BYDAY=#{value};"
+              else
+                by += "BYMONTHDAY=#{value};"
+              end
             when "yearly"
             by += "BYYEARDAY=#{value};"
             when 'interval'
             i += "INTERVAL=#{value};"
           end
         end
-        output += f+i+by
+        output += f+by+i
       end      
       if @repeat_until
         output += "UNTIL=#{@repeat_until.strftime("%Y%m%d")}"
       end
-      
       output += "\n"
     end
     
@@ -230,7 +246,7 @@ module GCal4Ruby
     #- *Secondly*: A value between 0 and 59.  Causes the event to repeat on that second of each minut.
     #- *Minutely*: A value between 0 and 59.  Causes the event to repeat on that minute of every hour.
     #- *Hourly*: A value between 0 and 23.  Causes the even to repeat on that hour of every day.
-    #- *Daily*: No value needed - will cause the event to repeat every day until the repeat_until date.
+    #- *Daily*: A true value - will cause the event to repeat every day until the repeat_until date.
     #- *Weekly*: A value of the first two letters of a day of the week.  Causes the event to repeat on that day.
     #- *Monthly*: A value of a positive or negative integer (i.e. +1) prepended to a day-of-week string ('TU') to indicate the position of the day within the month.  E.g. +1TU would be the first tuesday of the month.
     #- *Yearly*: A value of 1 to 366 indicating the day of the year.  May be negative to indicate counting down from the last day of the year.
@@ -240,14 +256,20 @@ module GCal4Ruby
     #If the interval is missing, it is assumed to be 1.
     #
     #===Examples
-    #Repeat event every Tuesday:
-    #   frequency = {"Weekly" => ["TU"]}
+    #Repeat event daily
+    #   frequency = {"daily" => true}
     #
-    #Repeat every first and third Monday of the month
-    #   frequency = {"Monthly" => ["+1MO", "+3MO"]}
+    #Repeat event every Tuesday:
+    #   frequency = {"weekly" => ["TU"]}
+    #
+    #Repeat every first monday of the month
+    #   frequency = {"monthly" => "+1MO", :day_of_week => true}
+    #
+    #Repeat on the 9th of each month regardless of the day
+    #   frequency = {"monthly" => 9}
     #
     #Repeat on the last day of every year
-    #   frequency = {"Yearly" => [366]}
+    #   frequency = {"Yearly" => 366}
     #
     #Repeat every other week on Friday
     #   frequency = {"Weekly" => ["FR"], "interval" => "2"}
