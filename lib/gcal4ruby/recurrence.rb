@@ -87,6 +87,12 @@ module GCal4Ruby
           @end_time = Time.parse_complete(value)
         elsif key.include?('DTEND;VALUE=DATE')
           @end_time = Time.parse(value)
+        elsif key.include?('BEGIN')
+          # We stop processing when we hit the BEGIN from VTIMEZONE
+          # or STANDARD on the gd:recurrence because these overwrite
+          # the start_time and end_time values with the details from
+          # the timezones.
+          return
         end
       end
     end
